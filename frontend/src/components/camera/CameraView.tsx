@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, Button, CircularProgress } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faVideoSlash } from '@fortawesome/free-solid-svg-icons';
 import { useCamera } from '../../hooks/useCamera';
@@ -42,7 +42,8 @@ export function CameraView({
     return (
       <Box sx={errorContainerStyle}>
         <FontAwesomeIcon icon={faVideoSlash} size="3x" style={{ opacity: 0.5 }} />
-        <Typography color="error" sx={{ mt: 2 }}>{error}</Typography>
+        <Typography color="error" sx={{ mt: 2, mb: 3, textAlign: 'center', px: 3 }}>{error}</Typography>
+        <Button variant="outlined" onClick={startCamera}>再試行</Button>
       </Box>
     );
   }
@@ -57,6 +58,12 @@ export function CameraView({
         muted
         sx={videoStyle}
       />
+      {!isReady && (
+        <Box sx={loadingOverlayStyle}>
+          <CircularProgress />
+          <Typography color="text.secondary" sx={{ mt: 2 }}>カメラを起動中...</Typography>
+        </Box>
+      )}
       <CameraControls
         isReady={isReady}
         facingMode={facingMode}
@@ -81,6 +88,16 @@ const videoStyle = {
   width: '100%',
   height: '100%',
   objectFit: 'cover',
+} as const;
+
+const loadingOverlayStyle = {
+  position: 'absolute',
+  inset: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: '#000',
 } as const;
 
 const errorContainerStyle = {

@@ -58,11 +58,12 @@ export function CaptionEditor({
         onChange={(e) => onCaptionChange(e.target.value)}
         fullWidth
         placeholder="写真のキャプションを入力..."
-        helperText="テンプレート変数: ${date}, ${time}, ${app} が利用可能"
+        helperText="テンプレート変数: ${date} ${time} ${datetime} ${loc} ${lat} ${lng} ${account} ${app}"
       />
 
       <Typography variant="caption" color="text.secondary">
-        ハッシュタグもキャプションに含めてください（例: #INSTA_IMME）
+        ハッシュタグもキャプションに含めてください（例: #INSTA_IMME）。
+        空欄の場合は投稿先アカウントのプリセットが自動適用されます。
       </Typography>
     </Box>
   );

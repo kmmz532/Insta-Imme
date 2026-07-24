@@ -76,9 +76,9 @@ export function PostHistoryList() {
       case 'failed':
         return <Chip size="small" icon={<FontAwesomeIcon icon={faCircleXmark} />} label="失敗" color="error" />;
       case 'publishing':
-        return <Chip size="small" icon={<FontAwesomeIcon icon={faSpinner} className="fa-spin" />} label="投稿中" color="warning" />;
+        return <Chip size="small" icon={<FontAwesomeIcon icon={faSpinner} spin />} label="投稿中" color="warning" />;
       case 'uploading':
-        return <Chip size="small" icon={<FontAwesomeIcon icon={faSpinner} className="fa-spin" />} label="アップロード中" color="info" />;
+        return <Chip size="small" icon={<FontAwesomeIcon icon={faSpinner} spin />} label="アップロード中" color="info" />;
       default:
         return <Chip size="small" icon={<FontAwesomeIcon icon={faClock} />} label="待機中" color="default" />;
     }
