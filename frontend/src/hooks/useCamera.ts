@@ -33,10 +33,19 @@ export function useCamera(): UseCameraReturn {
     stopCamera();
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: false,
-      });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false,
+        });
+      } catch (constraintErr) {
+        // 指定した前面/背面カメラが無い端末(PC等)では制約を外して再試行する
+        if (constraintErr instanceof DOMException && constraintErr.name === 'NotAllowedError') {
+          throw constraintErr;
+        }
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
 
       streamRef.current = stream;
       if (videoRef.current) {
