@@ -26,6 +26,37 @@ interface PresetDialogProps {
   onSaveSuccess: () => void;
 }
 
+/** プレビュー用にテンプレート変数をサンプル値へ置換する（実際の展開はサーバ側） */
+function previewExpand(text: string): string {
+  const now = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  const date = `${now.getFullYear()}/${p(now.getMonth() + 1)}/${p(now.getDate())}`;
+  const time = `${p(now.getHours())}:${p(now.getMinutes())}`;
+  const map: Record<string, string> = {
+    '${date}': date,
+    '${time}': time,
+    '${datetime}': `${date} ${time}`,
+    '${app}': 'Insta-Imme',
+    '${account}': 'your_account',
+    '${loc}': '東京都 渋谷区',
+    '${lat}': '35.658034',
+    '${lng}': '139.701636',
+  };
+  let out = text;
+  for (const [k, v] of Object.entries(map)) out = out.split(k).join(v);
+  return out;
+}
+
+/** 透かし位置に応じた配置スタイル（cqw基準でプレビュー画像幅に追従） */
+function watermarkPositionSx(position: WatermarkSettings['position']) {
+  const m = '2.7cqw'; // 実処理のmargin=30px(1080px基準)相当
+  if (position === 'top_left') return { top: m, left: m };
+  if (position === 'top_right') return { top: m, right: m };
+  if (position === 'bottom_left') return { bottom: m, left: m };
+  if (position === 'bottom_right') return { bottom: m, right: m };
+  return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
+}
+
 /** プリセット作成・編集用ダイアログ */
 export function PresetDialog({ open, onClose, preset, onSaveSuccess }: PresetDialogProps) {
   const [name, setName] = useState('');
@@ -179,6 +210,17 @@ export function PresetDialog({ open, onClose, preset, onSaveSuccess }: PresetDia
                   disabled={isSaving}
                 />
               </Grid>
+
+              <Grid item xs={12}>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                  プレビュー（4:5・変数はサンプル値）
+                </Typography>
+                <Box sx={previewBoxStyle}>
+                  <Box sx={{ ...previewTextStyle, ...watermarkPositionSx(wmPosition), fontSize: `calc(${wmFontSize || 1} / 1080 * 100cqw)` }}>
+                    {previewExpand(wmText) || '透かしテキスト'}
+                  </Box>
+                </Box>
+              </Grid>
             </Grid>
           )}
         </DialogContent>
@@ -192,3 +234,24 @@ export function PresetDialog({ open, onClose, preset, onSaveSuccess }: PresetDia
     </Dialog>
   );
 }
+
+const previewBoxStyle = {
+  containerType: 'inline-size',
+  position: 'relative',
+  width: '100%',
+  aspectRatio: '4 / 5',
+  backgroundColor: '#3a3a42',
+  borderRadius: 1,
+  overflow: 'hidden',
+} as const;
+
+const previewTextStyle = {
+  position: 'absolute',
+  color: '#fff',
+  fontWeight: 600,
+  lineHeight: 1.1,
+  whiteSpace: 'pre',
+  maxWidth: '94cqw',
+  // 実処理の黒フチ(アウトライン)を模したtext-shadow
+  textShadow: '1px 1px 2px #000, -1px -1px 2px #000, 1px -1px 2px #000, -1px 1px 2px #000',
+} as const;
