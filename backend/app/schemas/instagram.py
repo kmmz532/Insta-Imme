@@ -10,6 +10,10 @@ class InstagramLogin(BaseModel):
 class InstagramAccountResponse(BaseModel):
     id: str
     username: str
+    preset_id: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class InstagramAssociatePreset(BaseModel):
+    presetId: Optional[str] = None

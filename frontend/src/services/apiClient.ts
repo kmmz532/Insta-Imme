@@ -1,4 +1,4 @@
-import type { ApiResponse } from '../types/api';
+import type { ApiResponse, ApiErrorResponse } from '../types/api';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
@@ -25,7 +25,8 @@ export async function apiClient<T>(
   const json = (await res.json()) as ApiResponse<T>;
 
   if (!json.success) {
-    throw new ApiClientError(json.error.message, json.error.code, res.status);
+    const errorJson = json as ApiErrorResponse;
+    throw new ApiClientError(errorJson.error.message, errorJson.error.code, res.status);
   }
 
   return json.data;

@@ -10,6 +10,7 @@ class PostHistory(Base):
     instagram_account_id = Column(String, ForeignKey("instagram_accounts.id", ondelete="CASCADE"), nullable=False)
     caption = Column(String, default="", nullable=False)
     preset_id = Column(String, nullable=True)
+    image_id = Column(String, nullable=True)
     instagram_post_id = Column(String, nullable=True)
     status = Column(String, default="pending", nullable=False)  # pending, uploading, publishing, success, failed
     posted_at = Column(DateTime(timezone=True), nullable=True)

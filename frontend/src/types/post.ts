@@ -20,6 +20,9 @@ export interface PostResult {
 export interface PostState {
   id: string;
   status: PostStatus;
+  image_id: string | null;
   instagram_post_id: string | null;
   posted_at: string | null;
+  caption: string;
+  instagram_account_id: string;
 }

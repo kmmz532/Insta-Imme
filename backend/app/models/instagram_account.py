@@ -9,4 +9,5 @@ class InstagramAccount(Base):
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     username = Column(String, nullable=False)
     session_data = Column(String, nullable=False)  # 暗号化/シリアライズされたセッション情報
+    preset_id = Column(String, ForeignKey("presets.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

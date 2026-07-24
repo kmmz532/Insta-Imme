@@ -28,3 +28,14 @@ export async function removeAccount(accountId: string): Promise<void> {
     method: 'DELETE',
   });
 }
+
+/** アカウントにプリセットを割り当てる */
+export async function associatePreset(
+  accountId: string,
+  presetId: string | null
+): Promise<InstagramAccount> {
+  return apiClient<InstagramAccount>(`/api/instagram/accounts/${accountId}/preset`, {
+    method: 'PUT',
+    body: JSON.stringify({ presetId }),
+  });
+}

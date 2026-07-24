@@ -67,7 +67,7 @@ export function AccountList() {
     setConnectError(null);
 
     try {
-      const account = await instagramService.loginToInstagram(
+      await instagramService.loginToInstagram(
         username,
         password,
         show2FA ? verificationCode : undefined

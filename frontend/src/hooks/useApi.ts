@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { apiClient, ApiClientError } from '../services/apiClient';
+import { ApiClientError } from '../services/apiClient';
 
 interface UseApiOptions<T> {
   onSuccess?: (data: T) => void;

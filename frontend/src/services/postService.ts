@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import type { PostResult } from '../types/post';
+import type { PostResult, PostState } from '../types/post';
 
 /** 画像をWorkers経由でR2にアップロード */
 export async function uploadImage(imageBlob: Blob): Promise<{ imageId: string }> {
@@ -22,4 +22,9 @@ export async function publishPost(
     method: 'POST',
     body: JSON.stringify({ imageId, instagramAccountId, caption }),
   });
+}
+
+/** 投稿履歴を取得 */
+export async function fetchHistory(): Promise<PostState[]> {
+  return apiClient<PostState[]>('/api/posts/history');
 }

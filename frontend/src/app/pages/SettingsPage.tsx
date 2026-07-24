@@ -2,7 +2,7 @@ import { Box, Typography, Button, Divider } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faInstagram } from '@fortawesome/free-brands-svg-icons';
-import { faRightFromBracket } from '@fortawesome/free-solid-svg-icons';
+import { faRightFromBracket, faSliders } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../../hooks/useAuth';
 
 /** 設定ページ */
@@ -30,6 +30,17 @@ export function SettingsPage() {
         sx={{ justifyContent: 'flex-start', py: 1.5 }}
       >
         Instagram連携管理
+      </Button>
+
+      <Button
+        id="settings-presets"
+        variant="outlined"
+        startIcon={<FontAwesomeIcon icon={faSliders} />}
+        onClick={() => navigate('/settings/presets')}
+        fullWidth
+        sx={{ justifyContent: 'flex-start', py: 1.5 }}
+      >
+        プリセット管理
       </Button>
 
       <Box sx={{ flex: 1 }} />

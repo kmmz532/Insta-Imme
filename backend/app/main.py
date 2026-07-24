@@ -9,7 +9,7 @@ from app.config import settings
 from app.database import engine, Base
 # 全てのモデルをロードしてテーブル作成を行う
 import app.models # noqa: F401
-from app.routes import auth, instagram, post
+from app.routes import auth, instagram, post, preset
 
 # テーブルの作成 (簡易的なマイグレーション)
 Base.metadata.create_all(bind=engine)
@@ -40,6 +40,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api")
 app.include_router(instagram.router, prefix="/api")
 app.include_router(post.router, prefix="/api")
+app.include_router(preset.router, prefix="/api")
 
 # エラーハンドラ: FastAPIのHTTPException
 @app.exception_handler(Exception)

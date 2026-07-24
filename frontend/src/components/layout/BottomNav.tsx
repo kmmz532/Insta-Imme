@@ -1,14 +1,19 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { BottomNavigation, BottomNavigationAction, Paper } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCamera, faGear } from '@fortawesome/free-solid-svg-icons';
+import { faCamera, faGear, faHistory } from '@fortawesome/free-solid-svg-icons';
 
-/** ボトムナビゲーション - カメラ / 設定 */
+/** ボトムナビゲーション - カメラ / 履歴 / 設定 */
 export function BottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const currentValue = location.pathname.startsWith('/settings') ? 'settings' : 'camera';
+  let currentValue = 'camera';
+  if (location.pathname.startsWith('/settings')) {
+    currentValue = 'settings';
+  } else if (location.pathname.startsWith('/history')) {
+    currentValue = 'history';
+  }
 
   return (
     <Paper
@@ -19,6 +24,7 @@ export function BottomNav() {
         value={currentValue}
         onChange={(_, value: string) => {
           if (value === 'camera') navigate('/');
+          if (value === 'history') navigate('/history');
           if (value === 'settings') navigate('/settings');
         }}
         sx={navStyle}
@@ -28,6 +34,12 @@ export function BottomNav() {
           label="カメラ"
           value="camera"
           icon={<FontAwesomeIcon icon={faCamera} />}
+        />
+        <BottomNavigationAction
+          id="nav-history"
+          label="履歴"
+          value="history"
+          icon={<FontAwesomeIcon icon={faHistory} />}
         />
         <BottomNavigationAction
           id="nav-settings"

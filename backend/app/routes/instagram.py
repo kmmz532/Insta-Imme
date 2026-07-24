@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.instagram_account import InstagramAccount
 from app.schemas.api import ApiResponse
-from app.schemas.instagram import InstagramLogin, InstagramAccountResponse
+from app.schemas.instagram import InstagramLogin, InstagramAccountResponse, InstagramAssociatePreset
 from app.services.instagram_service import instagram_service
 from app.routes.deps import get_current_user
 from app.lib.errors import ValidationError, NotFoundError, ForbiddenError
@@ -86,3 +86,33 @@ def delete_account(
     db.delete(account)
     db.commit()
     return ApiResponse(data=None)
+
+@router.put("/accounts/{account_id}/preset", response_model=ApiResponse[InstagramAccountResponse])
+def associate_preset(
+    account_id: str,
+    data: InstagramAssociatePreset,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Instagramアカウントにプリセットを割り当てる"""
+    account = db.query(InstagramAccount).filter(InstagramAccount.id == account_id).first()
+    if not account:
+        raise NotFoundError("Instagramアカウントが見つかりません")
+    
+    if account.user_id != current_user.id:
+        raise ForbiddenError("このアカウントの設定を変更する権限がありません")
+
+    # プリセットIDの検証 (nullでなければ存在確認)
+    if data.presetId:
+        from app.models.preset import Preset
+        preset = db.query(Preset).filter(Preset.id == data.presetId).first()
+        if not preset:
+            raise NotFoundError("指定されたプリセットが見つかりません")
+        if preset.user_id != current_user.id:
+            raise ForbiddenError("このプリセットを使用する権限がありません")
+
+    account.preset_id = data.presetId
+    db.commit()
+    db.refresh(account)
+    
+    return ApiResponse(data=InstagramAccountResponse.model_validate(account))

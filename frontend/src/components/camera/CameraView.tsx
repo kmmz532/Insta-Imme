@@ -7,10 +7,16 @@ import { CameraControls } from './CameraControls';
 
 interface CameraViewProps {
   onPhotoTaken: (blob: Blob) => void;
+  isInstantPost: boolean;
+  onInstantPostChange: (val: boolean) => void;
 }
 
-/** カメラビュー - 全画面カメラプレビュー */
-export function CameraView({ onPhotoTaken }: CameraViewProps) {
+/** &カメラビュー - 全画面カメラプレビュー */
+export function CameraView({
+  onPhotoTaken,
+  isInstantPost,
+  onInstantPostChange,
+}: CameraViewProps) {
   const {
     videoRef,
     isReady,
@@ -56,6 +62,8 @@ export function CameraView({ onPhotoTaken }: CameraViewProps) {
         facingMode={facingMode}
         onShutter={handleShutter}
         onSwitchCamera={switchCamera}
+        isInstantPost={isInstantPost}
+        onInstantPostChange={onInstantPostChange}
       />
     </Box>
   );

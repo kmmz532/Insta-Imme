@@ -11,21 +11,34 @@ interface CameraControlsProps {
   facingMode: 'user' | 'environment';
   onShutter: () => void;
   onSwitchCamera: () => void;
+  isInstantPost: boolean;
+  onInstantPostChange: (val: boolean) => void;
 }
 
-/** カメラ操作UI - シャッター、カメラ切替、フラッシュ */
+/** カメラ操作UI - シャッター、カメラ切替、即投稿トグル */
 export function CameraControls({
   isReady,
   onShutter,
   onSwitchCamera,
+  isInstantPost,
+  onInstantPostChange,
 }: CameraControlsProps) {
   return (
     <Box sx={controlsContainerStyle}>
-      {/* フラッシュボタン（Phase 1では表示のみ） */}
+      {/* 即投稿トグルボタン（雷マークで表現） */}
       <IconButton
-        id="camera-flash"
-        sx={sideButtonStyle}
-        disabled
+        id="camera-instant"
+        onClick={() => onInstantPostChange(!isInstantPost)}
+        sx={{
+          ...sideButtonStyle,
+          backgroundColor: isInstantPost ? '#FF6D00' : 'rgba(255,255,255,0.1)',
+          color: isInstantPost ? '#fff' : 'rgba(255,255,255,0.85)',
+          boxShadow: isInstantPost ? '0 0 12px rgba(255,109,0,0.5)' : 'none',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          '&:hover': {
+            backgroundColor: isInstantPost ? '#FF9E40' : 'rgba(255,255,255,0.2)',
+          }
+        }}
       >
         <FontAwesomeIcon icon={faBolt} />
       </IconButton>
