@@ -7,6 +7,10 @@ class InstagramLogin(BaseModel):
     password: str
     verification_code: Optional[str] = None  # 2FA用
 
+class InstagramSessionLogin(BaseModel):
+    # ブラウザのsessionid Cookieでの連携用 (パスワード自動ログインが拒否される場合の回避策)
+    sessionid: str
+
 class AutoPresetRule(BaseModel):
     dayOfWeek: Literal["weekday", "weekend", "all"]
     timeRange: Literal["morning", "day", "night", "late_night"]

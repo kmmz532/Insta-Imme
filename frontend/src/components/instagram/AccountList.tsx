@@ -32,9 +32,11 @@ export function AccountList() {
 
   // ログインダイアログ用のステート
   const [openDialog, setOpenDialog] = useState(false);
+  const [mode, setMode] = useState<'password' | 'sessionid'>('password');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
+  const [sessionId, setSessionId] = useState('');
   const [show2FA, setShow2FA] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -66,9 +68,11 @@ export function AccountList() {
   useEffect(() => { loadAccounts(); }, []);
 
   const handleOpenDialog = () => {
+    setMode('password');
     setUsername('');
     setPassword('');
     setVerificationCode('');
+    setSessionId('');
     setShow2FA(false);
     setConnectError(null);
     setOpenDialog(true);
@@ -80,12 +84,16 @@ export function AccountList() {
     setConnectError(null);
 
     try {
-      await instagramService.loginToInstagram(
-        username,
-        password,
-        show2FA ? verificationCode : undefined
-      );
-      
+      if (mode === 'sessionid') {
+        await instagramService.connectBySessionId(sessionId.trim());
+      } else {
+        await instagramService.loginToInstagram(
+          username,
+          password,
+          show2FA ? verificationCode : undefined
+        );
+      }
+
       // 成功したら一覧を更新しダイアログを閉じる
       setOpenDialog(false);
       loadAccounts();
@@ -180,43 +188,71 @@ export function AccountList() {
       {/* ログインダイアログ */}
       <Dialog open={openDialog} onClose={() => !isConnecting && setOpenDialog(false)} maxWidth="xs" fullWidth>
         <Box component="form" onSubmit={handleConnect}>
-          <DialogTitle>Instagramログイン</DialogTitle>
+          <DialogTitle>{mode === 'sessionid' ? 'sessionidで連携' : 'Instagramログイン'}</DialogTitle>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
             {connectError && <Alert severity="error">{connectError}</Alert>}
-            
-            <TextField
-              label="ユーザー名"
-              variant="outlined"
-              fullWidth
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={isConnecting || show2FA}
-              required
-            />
-            
-            <TextField
-              label="パスワード"
-              type="password"
-              variant="outlined"
-              fullWidth
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isConnecting || show2FA}
-              required
-            />
 
-            {show2FA && (
-              <TextField
-                label="2FA確認コード"
-                variant="outlined"
-                fullWidth
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value)}
-                disabled={isConnecting}
-                required
-                placeholder="6桁のコード"
-                helperText="認証アプリまたはSMSのコードを入力してください"
-              />
+            {mode === 'password' ? (
+              <>
+                <TextField
+                  label="ユーザー名"
+                  variant="outlined"
+                  fullWidth
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  disabled={isConnecting || show2FA}
+                  required
+                />
+
+                <TextField
+                  label="パスワード"
+                  type="password"
+                  variant="outlined"
+                  fullWidth
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isConnecting || show2FA}
+                  required
+                />
+
+                {show2FA && (
+                  <TextField
+                    label="2FA確認コード"
+                    variant="outlined"
+                    fullWidth
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    disabled={isConnecting}
+                    required
+                    placeholder="6桁のコード"
+                    helperText="認証アプリまたはSMSのコードを入力してください"
+                  />
+                )}
+
+                <Button variant="text" size="small" onClick={() => { setMode('sessionid'); setConnectError(null); }} disabled={isConnecting}>
+                  Facebookログイン等でログインできない場合はこちら
+                </Button>
+              </>
+            ) : (
+              <>
+                <TextField
+                  label="sessionid"
+                  variant="outlined"
+                  fullWidth
+                  value={sessionId}
+                  onChange={(e) => setSessionId(e.target.value)}
+                  disabled={isConnecting}
+                  required
+                  multiline
+                  minRows={2}
+                  placeholder="ブラウザのCookie 'sessionid' の値"
+                  helperText="PCブラウザでinstagram.comにログイン→開発者ツール→Application→Cookies→sessionid をコピー"
+                />
+
+                <Button variant="text" size="small" onClick={() => { setMode('password'); setConnectError(null); }} disabled={isConnecting}>
+                  ユーザー名・パスワードで連携する
+                </Button>
+              </>
             )}
           </DialogContent>
           <DialogActions>
@@ -224,7 +260,7 @@ export function AccountList() {
               キャンセル
             </Button>
             <Button type="submit" variant="contained" disabled={isConnecting}>
-              {isConnecting ? <CircularProgress size={20} color="inherit" /> : show2FA ? 'コードを送信' : 'ログイン'}
+              {isConnecting ? <CircularProgress size={20} color="inherit" /> : show2FA ? 'コードを送信' : '連携'}
             </Button>
           </DialogActions>
         </Box>

@@ -17,6 +17,14 @@ export async function loginToInstagram(
   });
 }
 
+/** ブラウザのsessionidでInstagramを連携する (Facebookログイン等でパスワード連携できない場合) */
+export async function connectBySessionId(sessionid: string): Promise<InstagramAccount> {
+  return apiClient<InstagramAccount>('/api/instagram/login-sessionid', {
+    method: 'POST',
+    body: JSON.stringify({ sessionid }),
+  });
+}
+
 /** 連携アカウント一覧を取得 */
 export async function fetchAccounts(): Promise<InstagramAccount[]> {
   return apiClient<InstagramAccount[]>('/api/instagram/accounts');

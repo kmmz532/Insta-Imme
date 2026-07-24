@@ -130,6 +130,23 @@ class InstagramService:
             logger.exception("Instagramログインで予期せぬエラー(@%s): %s", username, detail)
             raise InstagramError(f"ログインに失敗しました: {detail}")
 
+    def login_by_sessionid(self, sessionid: str) -> tuple[Client, dict, str]:
+        """ブラウザのsessionid Cookieで連携する。パスワード自動ログインが拒否される
+        (Facebookログイン方式/アンチボット)アカウント向けの回避手段。"""
+        cl = self.get_client()
+        try:
+            cl.login_by_sessionid(sessionid)
+            info = cl.account_info()
+            username = info.username
+            logger.info("sessionid連携に成功しました: @%s", username)
+            return cl, cl.get_settings(), username
+        except Exception as e:
+            detail = self._extract_error_detail(e)
+            logger.warning("sessionid連携に失敗: %s", detail)
+            raise ValidationError(
+                f"sessionidでの連携に失敗しました。sessionidが正しく有効か確認してください: {detail}"
+            )
+
     def _extract_error_detail(self, exc: Exception) -> str:
         """instagrapi例外から可能な限り具体的なメッセージを取り出す"""
         # instagrapiの例外はレスポンスJSON(message等)を保持していることがある

@@ -17,6 +17,7 @@ from app.models.instagram_account import InstagramAccount
 from app.schemas.api import ApiResponse
 from app.schemas.instagram import (
     InstagramLogin,
+    InstagramSessionLogin,
     InstagramAccountResponse,
     InstagramAssociatePreset,
     AutoPresetSettings
@@ -86,6 +87,38 @@ def instagram_login(
         db.commit()
         db.refresh(db_account)
         return ApiResponse(data=db_to_account_response(db_account))
+
+@router.post("/login-sessionid", response_model=ApiResponse[InstagramAccountResponse], status_code=201)
+def instagram_login_sessionid(
+    data: InstagramSessionLogin,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """ブラウザのsessionidでInstagramを連携する (Facebookログイン/自動ログイン拒否アカウント向け)"""
+    cl, new_session, username = instagram_service.login_by_sessionid(data.sessionid)
+    encrypted_session = instagram_service.encrypt_session(new_session)
+
+    existing_account = db.query(InstagramAccount).filter(
+        InstagramAccount.user_id == current_user.id,
+        InstagramAccount.username == username
+    ).first()
+
+    if existing_account:
+        existing_account.session_data = encrypted_session
+        db.commit()
+        db.refresh(existing_account)
+        return ApiResponse(data=db_to_account_response(existing_account))
+
+    db_account = InstagramAccount(
+        id=str(uuid.uuid4()),
+        user_id=current_user.id,
+        username=username,
+        session_data=encrypted_session
+    )
+    db.add(db_account)
+    db.commit()
+    db.refresh(db_account)
+    return ApiResponse(data=db_to_account_response(db_account))
 
 @router.get("/accounts", response_model=ApiResponse[List[InstagramAccountResponse]])
 def get_accounts(
