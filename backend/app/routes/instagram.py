@@ -1,8 +1,11 @@
 import uuid
 import json
 import io
+import logging
 import zipfile
 import requests
+
+logger = logging.getLogger("instagram")
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session

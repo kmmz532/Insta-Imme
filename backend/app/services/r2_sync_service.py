@@ -1,6 +1,9 @@
 import os
+import logging
 import boto3
 from botocore.exceptions import ClientError
+
+logger = logging.getLogger("r2_sync")
 
 R2_ENDPOINT_URL = os.getenv("R2_ENDPOINT_URL")
 R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID")
@@ -38,10 +41,10 @@ def download_db() -> bool:
         if e.response["Error"]["Code"] == "404":
             print("[R2 Sync] R2上にデータベースが見つかりません。初回起動として新規作成します。")
             return True
-        print(f"[R2 Sync] R2からのデータベース取得中にエラーが発生しました: {str(e)}")
+        logger.error("[R2 Sync] R2からのDL中にClientError: %s | response=%s", e, getattr(e, "response", None), exc_info=True)
         return False
     except Exception as e:
-        print(f"[R2 Sync] データベースダウンロード中に予期せぬエラーが発生しました: {str(e)}")
+        logger.error("[R2 Sync] DB DL中に予期せぬエラー: %s", e, exc_info=True)
         return False
 
 def upload_db() -> bool:
@@ -58,5 +61,5 @@ def upload_db() -> bool:
         print("[R2 Sync] データベースのアップロードに成功しました。")
         return True
     except Exception as e:
-        print(f"[R2 Sync] データベースアップロード中にエラーが発生しました: {str(e)}")
+        logger.error("[R2 Sync] DB アップロード中にエラー: %s", e, exc_info=True)
         return False
