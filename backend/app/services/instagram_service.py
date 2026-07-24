@@ -46,27 +46,38 @@ class InstagramService:
 
     def login(self, username: str, password: str, verification_code: str = None, session_data_encrypted: str = None) -> tuple[Client, dict]:
         """Instagramにログインし、クライアントと新しいセッション設定を返す"""
-        cl = self.get_client(session_data_encrypted)
-        
-        try:
-            if session_data_encrypted:
-                # 既存セッションの有効性を確認
-                try:
-                    if cl.get_timeline_feed(): # タイムラインが取れればセッションは有効
-                        return cl, cl.get_settings()
-                except Exception:
-                    # セッションが無効なら再ログインを試みる
-                    pass
+        # 既存セッションがあれば、まずその有効性のみを確認する
+        if session_data_encrypted:
+            existing_cl = self.get_client(session_data_encrypted)
+            try:
+                if existing_cl.get_timeline_feed():  # タイムラインが取れればセッションは有効
+                    return existing_cl, existing_cl.get_settings()
+            except Exception:
+                # セッションが無効なら、下の資格情報ログインへフォールバックする
+                pass
 
-            # 新規ログイン
+        # 失効セッションのauthorization/cookieを引き継ぐと正しいパスワードでもBadPasswordになるため、
+        # 資格情報ログインは必ずクリーンなクライアントで行う(端末UUID等の設定のみ引き継ぐ)
+        cl = self.get_client()
+        if session_data_encrypted:
+            try:
+                old_settings = self.decrypt_session(session_data_encrypted)
+                uuids = old_settings.get("uuids")
+                if uuids and hasattr(cl, "set_uuids"):
+                    cl.set_uuids(uuids)
+            except Exception:
+                pass
+
+        try:
+            # 新規/再ログイン
             if verification_code:
                 # 2FAコード付きログイン
                 cl.login(username, password, verification_code=verification_code)
             else:
                 cl.login(username, password)
-                
+
             return cl, cl.get_settings()
-            
+
         except TwoFactorRequired as e:
             raise ValidationError("2FA")  # フロントエンドで2FAコード入力を促すための識別文字列
         except BadPassword:
