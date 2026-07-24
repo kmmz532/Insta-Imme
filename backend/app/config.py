@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 1440
     frontend_url: str = "http://localhost:5173"
     upload_dir: str = "./uploads"
+    # データセンターIPがInstagramにブロックされる場合に使用する任意のプロキシ (例: http://user:pass@host:port)
+    instagram_proxy: str = ""
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
