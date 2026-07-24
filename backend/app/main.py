@@ -31,6 +31,8 @@ origins = [
     settings.frontend_url,
     "http://localhost:5173",
     "http://localhost:3000",
+    "https://insta-imme.pages.dev",
+    "https://insta-imme.kmmz.jp",
 ]
 
 app.add_middleware(
