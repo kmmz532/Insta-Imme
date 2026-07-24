@@ -37,6 +37,38 @@ class ImageService:
         
         raise NotFoundError("画像が見つかりません")
 
+    def crop_to_instagram_ratio(self, image_path: str) -> None:
+        """Instagramが対応するアスペクト比(縦4:5〜横1.91:1)に中央クロップする。
+        投稿後にInstagram側で追加クロップされて透かしが切れるのを防ぐため、事前に合わせておく。"""
+        MIN_RATIO = 4 / 5     # 0.8 (縦長の限界)
+        MAX_RATIO = 1.91      # 横長の限界
+        try:
+            img = Image.open(image_path)
+            original_format = img.format
+            img = self._rotate_by_exif(img)
+            w, h = img.size
+            if h == 0:
+                return
+            ratio = w / h
+
+            if ratio < MIN_RATIO:
+                # 縦長すぎる → 高さを削る(中央)
+                new_h = int(round(w / MIN_RATIO))
+                top = (h - new_h) // 2
+                img = img.crop((0, top, w, top + new_h))
+            elif ratio > MAX_RATIO:
+                # 横長すぎる → 幅を削る(中央)
+                new_w = int(round(h * MAX_RATIO))
+                left = (w - new_w) // 2
+                img = img.crop((left, 0, left + new_w, h))
+            else:
+                # 対応範囲内ならクロップ不要だが、EXIF回転を反映するため保存はしておく
+                pass
+
+            img.save(image_path, format=original_format)
+        except Exception as e:
+            raise ValidationError(f"画像のトリミングに失敗しました: {str(e)}")
+
     def apply_watermark(self, image_path: str, text: str, position: str = "bottom_right", font_size: int = 36) -> None:
         """画像に透かし文字を焼き込む (Pillow使用)"""
         try:
