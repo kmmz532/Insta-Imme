@@ -60,11 +60,26 @@ app.include_router(instagram.router, prefix="/api")
 app.include_router(post.router, prefix="/api")
 app.include_router(preset.router, prefix="/api")
 
+def add_cors_headers(response: JSONResponse, request: Request):
+    origin = request.headers.get("origin")
+    allowed_origins = [
+        settings.frontend_url,
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://insta-imme.pages.dev",
+        "https://insta-imme.kmmz.jp",
+    ]
+    if origin in allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+
 # エラーハンドラ: FastAPIのHTTPException
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     # 予期せぬエラー
-    return JSONResponse(
+    response = JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "success": False,
@@ -74,12 +89,13 @@ async def global_exception_handler(request: Request, exc: Exception):
             }
         }
     )
+    add_cors_headers(response, request)
+    return response
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    # カスタムHTTPExceptionの処理
+    # カスタムHTTPException of error handle
     error_code = "API_ERROR"
-    # 自作のErrorクラスからcode属性がある場合はそれを取得
     if hasattr(exc, "code"):
         error_code = exc.code
     elif exc.status_code == 401:
@@ -91,7 +107,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     elif exc.status_code == 400:
         error_code = "VALIDATION_ERROR"
         
-    return JSONResponse(
+    response = JSONResponse(
         status_code=exc.status_code,
         content={
             "success": False,
@@ -101,20 +117,21 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             }
         }
     )
+    add_cors_headers(response, request)
+    return response
 
 # エラーハンドラ: リクエストバリデーションエラー
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     # Pydantic等の入力エラー
     errors = exc.errors()
-    # 最初のメッセージを取得
     message = "入力内容が正しくありません"
     if errors:
         loc = ".".join(str(x) for x in errors[0].get("loc", []))
         msg = errors[0].get("msg", "")
         message = f"バリデーションエラー ({loc}): {msg}"
 
-    return JSONResponse(
+    response = JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={
             "success": False,
@@ -124,6 +141,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             }
         }
     )
+    add_cors_headers(response, request)
+    return response
 
 @app.get("/health")
 def health_check():
