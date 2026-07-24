@@ -191,7 +191,8 @@ def download_all_photos(
     try:
         cl = instagram_service.get_client(account.session_data)
         cl.get_timeline_feed()
-    except Exception:
+    except Exception as e:
+        logger.warning("[IG DL] セッション確認失敗 account=%s: %s", account.username, e, exc_info=True)
         raise ValidationError("Instagramのセッション期限が切れています。再連携してください。")
 
     try:
@@ -220,8 +221,8 @@ def download_all_photos(
                         if resp.status_code == 200:
                             file_name = f"{media.pk}_{u_idx + 1}.jpg"
                             zip_file.writestr(file_name, resp.content)
-                    except Exception:
-                        pass # 1件の失敗で全体を止めない
+                    except Exception as img_err:
+                        logger.warning("[IG DL] 画像取得失敗 url=%s: %s", url, img_err)
 
         zip_buffer.seek(0)
         
@@ -236,4 +237,5 @@ def download_all_photos(
             headers=headers
         )
     except Exception as e:
+        logger.error("[IG DL] 一括ダウンロード失敗 account=%s: %s", account.username, e, exc_info=True)
         raise InstagramError(f"画像一括ダウンロード処理に失敗しました: {str(e)}")

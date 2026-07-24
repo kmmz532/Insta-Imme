@@ -1,5 +1,6 @@
 import uuid
 import json
+import logging
 from datetime import datetime
 from fastapi import APIRouter, Depends, UploadFile, File, Form, status
 from pydantic import BaseModel
