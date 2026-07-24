@@ -7,8 +7,7 @@ from instagrapi.exceptions import (
     TwoFactorRequired,
     BadPassword,
     UserNotFound,
-    ChallengeRequired,
-    PleaseRetry
+    ChallengeRequired
 )
 from app.config import settings
 from app.lib.errors import InstagramError, ValidationError
@@ -76,8 +75,6 @@ class InstagramService:
             raise ValidationError("ユーザーが見つかりません")
         except ChallengeRequired:
             raise InstagramError("認証チャレンジ（電話番号/メール認証）が必要です。ブラウザで一度ログインしてください。")
-        except PleaseRetry:
-            raise InstagramError("Instagramへのリクエストが制限されています。しばらく時間をおいてお試しください。")
         except Exception as e:
             raise InstagramError(f"ログインに失敗しました: {str(e)}")
 
