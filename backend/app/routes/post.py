@@ -125,6 +125,12 @@ def publish_post(
     if preset_id_applied:
         preset = db.query(Preset).filter(Preset.id == preset_id_applied).first()
 
+    logger.info(
+        "[POST] preset解決 account=%s preset_id=%s watermark_template=%s",
+        account.username, preset_id_applied,
+        (preset.watermark_template if preset else "(preset未解決)"),
+    )
+
     # キャプションの決定とテンプレート展開
     caption = data.caption
     if caption:
@@ -172,12 +178,15 @@ def publish_post(
                     position = watermark_settings.get("position", "bottom_right")
                     font_size = watermark_settings.get("font_size", 36)
                     
+                    logger.info("[POST] 透かし適用 text=%r position=%s size=%s path=%s", text_replaced, position, font_size, image_path)
                     image_service.apply_watermark(
                         image_path=image_path,
                         text=text_replaced,
                         position=position,
                         font_size=font_size
                     )
+                else:
+                    logger.info("[POST] 透かしはenabled=Falseのため未適用")
             except Exception as e:
                 raise ValidationError(f"透かしの適用に失敗しました: {str(e)}")
         
