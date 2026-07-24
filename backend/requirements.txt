@@ -6,6 +6,7 @@ pydantic>=2.0
 pydantic-settings
 pyjwt
 bcrypt
+cryptography
 python-multipart
 instagrapi
 Pillow
