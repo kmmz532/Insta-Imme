@@ -19,6 +19,8 @@ from app.services.instagram_service import instagram_service
 from app.routes.deps import get_current_user
 from app.lib.errors import NotFoundError, ForbiddenError, InstagramError, ValidationError
 
+logger = logging.getLogger("post")
+
 router = APIRouter(prefix="/posts", tags=["posts"])
 
 class ImageUploadResponse(BaseModel):
@@ -204,6 +206,10 @@ def publish_post(
 
     except Exception as e:
         # 投稿失敗処理
+        logger.error(
+            "[POST] 投稿失敗 post_id=%s account=%s image=%s: %s",
+            post_id, account.username, data.imageId, e, exc_info=True,
+        )
         db_post.status = "failed"
         db.commit()
         if isinstance(e, InstagramError) or isinstance(e, ValidationError):
