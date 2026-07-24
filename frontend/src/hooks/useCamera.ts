@@ -2,11 +2,18 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 
 type FacingMode = 'user' | 'environment';
 
+// torchはブラウザのメディアAPI型定義に含まれないため拡張する
+type TorchCapabilities = MediaTrackCapabilities & { torch?: boolean };
+type TorchConstraintSet = MediaTrackConstraintSet & { torch?: boolean };
+
 interface UseCameraReturn {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   isReady: boolean;
   facingMode: FacingMode;
   error: string | null;
+  torchSupported: boolean;
+  torchEnabled: boolean;
+  toggleTorch: () => Promise<void>;
   startCamera: () => Promise<void>;
   stopCamera: () => void;
   switchCamera: () => Promise<void>;
@@ -28,11 +35,15 @@ export function useCamera(): UseCameraReturn {
     () => localStorage.getItem(CAMERA_DEVICE_KEY) || null
   );
   const [error, setError] = useState<string | null>(null);
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchEnabled, setTorchEnabled] = useState(false);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     setIsReady(false);
+    setTorchSupported(false);
+    setTorchEnabled(false);
   }, []);
 
   const startCamera = useCallback(async () => {
@@ -57,6 +68,13 @@ export function useCamera(): UseCameraReturn {
       }
 
       streamRef.current = stream;
+
+      // トーチ(フラッシュライト)対応可否を判定。背面カメラ+対応端末(主にAndroid)で利用可能
+      const track = stream.getVideoTracks()[0];
+      const caps = (track?.getCapabilities?.() ?? {}) as TorchCapabilities;
+      setTorchSupported(Boolean(caps.torch));
+      setTorchEnabled(false);
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
@@ -77,6 +95,20 @@ export function useCamera(): UseCameraReturn {
     const next: FacingMode = facingMode === 'user' ? 'environment' : 'user';
     setFacingMode(next);
   }, [facingMode]);
+
+  const toggleTorch = useCallback(async () => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    const next = !torchEnabled;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: next } as TorchConstraintSet] });
+      setTorchEnabled(next);
+    } catch {
+      // 端末/ブラウザが未対応の場合はトーチを無効扱いにする
+      setTorchSupported(false);
+      setTorchEnabled(false);
+    }
+  }, [torchEnabled]);
 
   /** facingMode/deviceId変更時にカメラを再起動 */
   useEffect(() => {
@@ -137,6 +169,9 @@ export function useCamera(): UseCameraReturn {
     isReady,
     facingMode,
     error,
+    torchSupported,
+    torchEnabled,
+    toggleTorch,
     startCamera,
     stopCamera,
     switchCamera,

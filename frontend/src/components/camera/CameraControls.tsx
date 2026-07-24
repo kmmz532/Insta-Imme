@@ -4,6 +4,7 @@ import {
   faCamera,
   faCameraRotate,
   faBolt,
+  faPaperPlane,
 } from '@fortawesome/free-solid-svg-icons';
 
 interface CameraControlsProps {
@@ -13,21 +14,28 @@ interface CameraControlsProps {
   onSwitchCamera: () => void;
   isInstantPost: boolean;
   onInstantPostChange: (val: boolean) => void;
+  torchSupported: boolean;
+  torchEnabled: boolean;
+  onToggleTorch: () => void;
 }
 
-/** カメラ操作UI - シャッター、カメラ切替、即投稿トグル */
+/** カメラ操作UI - シャッター、カメラ切替、フラッシュ、即投稿トグル */
 export function CameraControls({
   isReady,
   onShutter,
   onSwitchCamera,
   isInstantPost,
   onInstantPostChange,
+  torchSupported,
+  torchEnabled,
+  onToggleTorch,
 }: CameraControlsProps) {
   return (
     <Box sx={controlsContainerStyle}>
-      {/* 即投稿トグルボタン（雷マークで表現） */}
+      {/* 即投稿トグルボタン（紙飛行機マーク）。ONで撮影後すぐ投稿 */}
       <IconButton
         id="camera-instant"
+        aria-label="即投稿モード"
         onClick={() => onInstantPostChange(!isInstantPost)}
         sx={{
           ...sideButtonStyle,
@@ -40,8 +48,29 @@ export function CameraControls({
           }
         }}
       >
-        <FontAwesomeIcon icon={faBolt} />
+        <FontAwesomeIcon icon={faPaperPlane} />
       </IconButton>
+
+      {/* フラッシュ(トーチ)トグル。対応端末でのみ表示 */}
+      {torchSupported && (
+        <IconButton
+          id="camera-torch"
+          aria-label="フラッシュ"
+          onClick={onToggleTorch}
+          sx={{
+            ...sideButtonStyle,
+            backgroundColor: torchEnabled ? '#FFD54F' : 'rgba(255,255,255,0.1)',
+            color: torchEnabled ? '#1a1a1a' : 'rgba(255,255,255,0.85)',
+            boxShadow: torchEnabled ? '0 0 12px rgba(255,213,79,0.6)' : 'none',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            '&:hover': {
+              backgroundColor: torchEnabled ? '#FFE082' : 'rgba(255,255,255,0.2)',
+            }
+          }}
+        >
+          <FontAwesomeIcon icon={faBolt} />
+        </IconButton>
+      )}
 
       {/* シャッターボタン */}
       <IconButton

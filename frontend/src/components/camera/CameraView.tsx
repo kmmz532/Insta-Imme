@@ -22,6 +22,9 @@ export function CameraView({
     isReady,
     facingMode,
     error,
+    torchSupported,
+    torchEnabled,
+    toggleTorch,
     startCamera,
     stopCamera,
     switchCamera,
@@ -71,6 +74,9 @@ export function CameraView({
         onSwitchCamera={switchCamera}
         isInstantPost={isInstantPost}
         onInstantPostChange={onInstantPostChange}
+        torchSupported={torchSupported}
+        torchEnabled={torchEnabled}
+        onToggleTorch={toggleTorch}
       />
     </Box>
   );
