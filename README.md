@@ -1,0 +1,138 @@
+# Insta-Imme
+
+Insta-Imme（インスタ・イメ）は、PWA対応のカメラ・Instagram投稿自動化アプリケーションです。撮影した写真をその場でシームレスに加工・キャプション生成し、自動でInstagramへ投稿することができます。
+
+---
+
+## 1. 概要
+
+Insta-Imme は、投稿の手間を極限まで減らすための「撮影者向け投稿自動化ツール」です。スマートフォンのPWA環境で動作し、以下の機能を提供します。
+
+### 主な機能
+- **カメラ撮影と即投稿**: 撮影後プレビューを挟まず、バックグラウンドで即時に連携アカウントへ自動投稿する「即投稿モード」を搭載。
+- **テンプレート＆プリセット**: キャプションのひな形やハッシュタグ、透かし文字の位置・サイズ・内容を「プリセット」として管理。
+- **曜日・時間帯自動プリセット適用**: 投稿する時間帯（朝・昼・夜・深夜）や曜日（平日・休日）に応じて、最適なプリセットを自動判別して適用。
+- **GPS位置情報の自動挿入**: 撮影時の位置情報 (GPS) から、キャプションや透かし内の変数（`${lat}`, `${lng}`, `${loc}`）へ、緯度経度や市区町村名（OpenStreetMap Nominatim APIで逆引き）を自動展開。
+- **複数Instagramアカウント管理**: 複数のInstagramアカウントを安全に登録・切り替え可能。
+- **投稿履歴と再試行**: 失敗した投稿履歴から、ワンタップで同じ内容・画像での再投稿を実行。
+- **過去投稿の一括ダウンロード**: 連携されたアカウントの過去のInstagram投稿画像をZIP形式でまとめてダウンロード可能。
+
+---
+
+## 2. システム構成・アーキテクチャ
+
+モノレポ構成となっており、以下のテクノロジースタックで動作します。
+
+- **フロントエンド (`/frontend`)**
+  - React (TypeScript) + Vite
+  - MUI v6 (UI コンポーネント)
+  - Vite PWA Plugin (PWA化・オフラインキャッシュ)
+- **バックエンド (`/backend`)**
+  - FastAPI (Python)
+  - SQLAlchemy (SQLiteデータベース)
+  - instagrapi (Instagram個人アカウント連携ライブラリ)
+  - Pillow (透かし合成処理)
+
+---
+
+## 3. ローカル開発環境の起動方法
+
+### バックエンド (FastAPI) の起動
+
+1. Python仮想環境を作成し、依存ライブラリをインストールします。
+   ```bash
+   cd backend
+   python -m venv .venv
+   .venv\Scripts\activate   # Windowsの場合
+   # source .venv/bin/activate # Mac/Linuxの場合
+   pip install -r requirements.txt
+   ```
+
+2. `.env` ファイルを作成し、環境変数を設定します（詳細は後述）。
+
+3. 開発サーバーを起動します。
+   ```bash
+   uvicorn app.main:app --reload --port 8000
+   ```
+   バックエンドAPIは `http://localhost:8000` で稼働します。
+
+### フロントエンド (React) の起動
+
+1. 依存ライブラリをインストールします。
+   ```bash
+   cd frontend
+   npm install
+   ```
+
+2. 開発用環境変数（`.env` または `.env.local`）を作成し、API接続先を設定します。
+   ```env
+   VITE_API_URL=http://localhost:8000
+   ```
+
+3. 開発サーバーを起動します。
+   ```bash
+   npm run dev
+   ```
+   フロントエンドアプリは `http://localhost:5173` で稼働します。
+
+---
+
+## 4. 環境変数設定
+
+### バックエンド (`backend/.env`)
+以下の項目を設定します。
+```env
+DATABASE_URL=sqlite:///./insta_imme.db
+JWT_SECRET=YOUR_SUPER_SECRET_JWT_KEY   # JWT暗号化およびセッションデータ暗号化に使用する任意のキー
+```
+
+### フロントエンド (`frontend/.env`)
+```env
+VITE_API_URL=http://localhost:8000
+```
+
+---
+
+## 5. テンプレート変数仕様
+
+キャプションおよび透かしのテキスト内では、以下の変数が自動展開されます。
+- `${date}`: 日付 (YYYY/MM/DD)
+- `${time}`: 時刻 (HH:MM)
+- `${datetime}`: 日時 (YYYY/MM/DD HH:MM)
+- `${account}`: 投稿するInstagramのユーザー名
+- `${lat}`: 撮影地の緯度
+- `${lng}`: 撮影地の経度
+- `${loc}`: 撮影地の市区町村名等（GPSがONの場合のみ自動逆引き）
+- `${app}`: アプリ名 ("Insta-Imme")
+
+---
+
+## 6. デプロイ設定 (Render & Cloudflare)
+
+### バックエンド: Render (FastAPI)
+Render.com上に **Web Service** としてPython/FastAPIバックエンドをデプロイします。
+
+1. **基本設定**:
+   - **Runtime**: `Python`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+2. **ディスク永続化 (Persistent Disk)**:
+   - SQLiteデータベースを永続化するため、コンテナにディスクをマウントします。
+   - **Mount Path**: `/data`
+   - **Name**: `sqlite-db` (サイズは 1GB 等で十分)
+3. **環境変数 (Environment Variables)**:
+   - `DATABASE_URL`: `sqlite:////data/insta_imme.db` (マウントしたディスク上を指定)
+   - `JWT_SECRET`: `任意の強力なランダム文字列`
+
+### フロントエンド: Cloudflare Pages (React)
+フロントエンドを **Cloudflare Pages** にデプロイします。
+
+1. **基本設定**:
+   - **Framework preset**: `Vite`
+   - **Build command**: `npm run build`
+   - **Build output directory**: `dist`
+   - **Root directory**: `frontend`
+2. **環境変数 (Environment Variables)**:
+   - **Production & Preview**:
+     - `VITE_API_URL`: Renderで作成したバックエンドのWeb Service URL (例: `https://insta-imme-api.onrender.com`)
+

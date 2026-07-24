@@ -5,17 +5,9 @@ import {
   Button,
   Card,
   CardContent,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
   FormControl,
-  InputLabel,
   Select,
   MenuItem,
-  Switch,
-  FormControlLabel,
   Grid,
   Alert,
   CircularProgress,
@@ -25,22 +17,24 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faTrash, faPen, faSliders, faCalendarDays } from '@fortawesome/free-solid-svg-icons';
 import { AutoRuleSelector } from '../instagram/AutoRuleSelector';
+import { PresetDialog } from './PresetDialog';
 import * as presetService from '../../services/presetService';
 import * as instagramService from '../../services/instagramService';
-import type { Preset, WatermarkSettings } from '../../types/preset';
+import type { Preset } from '../../types/preset';
 import type { InstagramAccount } from '../../types/instagram';
 
+/** プリセット管理画面 - プリセットCRUD、デフォルト割当、自動ルール定義 */
 export function PresetManager() {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [accounts, setAccounts] = useState<InstagramAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ダイアログ用のステート
+  // プリセットダイアログ用
   const [openDialog, setOpenDialog] = useState(false);
   const [editingPreset, setEditingPreset] = useState<Preset | null>(null);
 
-  // 自動ルールダイアログ用ステート
+  // 自動ルールダイアログ用
   const [openAutoDialog, setOpenAutoDialog] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<InstagramAccount | null>(null);
 
@@ -48,25 +42,17 @@ export function PresetManager() {
     setSelectedAccount(account);
     setOpenAutoDialog(true);
   };
-  
-  // フォームステート
-  const [name, setName] = useState('');
-  const [captionTemplate, setCaptionTemplate] = useState('');
-  const [hashtags, setHashtags] = useState('');
-  const [wmEnabled, setWmEnabled] = useState(false);
-  const [wmText, setWmText] = useState('');
-  const [wmPosition, setWmPosition] = useState<WatermarkSettings['position']>('bottom_right');
-  const [wmFontSize, setWmFontSize] = useState(36);
 
   const loadData = async () => {
     setIsLoading(true);
+    setError(null);
     try {
-      const [pList, aList] = await Promise.all([
+      const [presetList, accountList] = await Promise.all([
         presetService.fetchPresets(),
         instagramService.fetchAccounts(),
       ]);
-      setPresets(pList);
-      setAccounts(aList);
+      setPresets(presetList);
+      setAccounts(accountList);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'データの取得に失敗しました');
     } finally {
@@ -74,62 +60,18 @@ export function PresetManager() {
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const handleOpenCreate = () => {
     setEditingPreset(null);
-    setName('');
-    setCaptionTemplate('');
-    setHashtags('');
-    setWmEnabled(false);
-    setWmText('');
-    setWmPosition('bottom_right');
-    setWmFontSize(36);
     setOpenDialog(true);
   };
 
   const handleOpenEdit = (preset: Preset) => {
     setEditingPreset(preset);
-    setName(preset.name);
-    setCaptionTemplate(preset.caption_template);
-    setHashtags(preset.hashtags);
-    setWmEnabled(preset.watermark.enabled);
-    setWmText(preset.watermark.text);
-    setWmPosition(preset.watermark.position);
-    setWmFontSize(preset.watermark.font_size);
     setOpenDialog(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const watermark: WatermarkSettings = {
-      enabled: wmEnabled,
-      text: wmText,
-      position: wmPosition,
-      font_size: wmFontSize,
-    };
-
-    try {
-      if (editingPreset) {
-        await presetService.updatePreset(editingPreset.id, {
-          name,
-          caption_template: captionTemplate,
-          hashtags,
-          watermark,
-        });
-      } else {
-        await presetService.createPreset({
-          name,
-          caption_template: captionTemplate,
-          hashtags,
-          watermark,
-        });
-      }
-      setOpenDialog(false);
-      loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '保存に失敗しました');
-    }
   };
 
   const handleDelete = async (presetId: string) => {
@@ -144,11 +86,8 @@ export function PresetManager() {
 
   const handleAccountPresetChange = async (accountId: string, presetId: string | null) => {
     try {
-      // プレースホルダーの 'none' は null として扱う
       const targetPresetId = presetId === 'none' ? null : presetId;
       await instagramService.associatePreset(accountId, targetPresetId);
-      
-      // アカウント一覧を更新
       const updatedAccounts = await instagramService.fetchAccounts();
       setAccounts(updatedAccounts);
     } catch (err) {
@@ -270,88 +209,12 @@ export function PresetManager() {
       )}
 
       {/* 作成・編集ダイアログ */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <Box component="form" onSubmit={handleSubmit}>
-          <DialogTitle>{editingPreset ? 'プリセットの編集' : 'プリセットの作成'}</DialogTitle>
-          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            <TextField
-              label="プリセット名"
-              required
-              fullWidth
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <TextField
-              label="キャプションテンプレート"
-              multiline
-              rows={4}
-              fullWidth
-              value={captionTemplate}
-              onChange={(e) => setCaptionTemplate(e.target.value)}
-              placeholder="投稿の本文テンプレート（変数が使用可能）"
-              helperText="変数: ${date}, ${time}, ${datetime}, ${app}, ${account}"
-            />
-            <TextField
-              label="ハッシュタグ"
-              fullWidth
-              value={hashtags}
-              onChange={(e) => setHashtags(e.target.value)}
-              placeholder="#写真 #日常 (スペース区切り)"
-            />
-
-            <Typography variant="subtitle2" sx={{ mt: 1 }}>透かし設定</Typography>
-            <FormControlLabel
-              control={<Switch checked={wmEnabled} onChange={(e) => setWmEnabled(e.target.checked)} />}
-              label="透かし加工を有効にする"
-            />
-
-            {wmEnabled && (
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <TextField
-                    label="透かしテキスト"
-                    fullWidth
-                    required
-                    value={wmText}
-                    onChange={(e) => setWmText(e.target.value)}
-                    placeholder="例: © ${account} / ${date}"
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>位置</InputLabel>
-                    <Select
-                      value={wmPosition}
-                      label="位置"
-                      onChange={(e) => setWmPosition(e.target.value as WatermarkSettings['position'])}
-                    >
-                      <MenuItem value="top_left">左上</MenuItem>
-                      <MenuItem value="top_right">右上</MenuItem>
-                      <MenuItem value="bottom_left">左下</MenuItem>
-                      <MenuItem value="bottom_right">右下</MenuItem>
-                      <MenuItem value="center">中央</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField
-                    label="フォントサイズ (px)"
-                    type="number"
-                    fullWidth
-                    required
-                    value={wmFontSize}
-                    onChange={(e) => setWmFontSize(Number(e.target.value))}
-                  />
-                </Grid>
-              </Grid>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenDialog(false)}>キャンセル</Button>
-            <Button type="submit" variant="contained">保存</Button>
-          </DialogActions>
-        </Box>
-      </Dialog>
+      <PresetDialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        preset={editingPreset}
+        onSaveSuccess={loadData}
+      />
 
       {/* 自動ルールダイアログ */}
       {selectedAccount && (
