@@ -1,6 +1,6 @@
 import { createTheme } from '@mui/material/styles';
 
-/** Insta-Imme ダークテーマ - Instagram風グラデーションアクセント */
+/** Insta-Imme ダークテーマ - 単色アクセント */
 export const theme = createTheme({
   palette: {
     mode: 'dark',
@@ -47,9 +47,9 @@ export const theme = createTheme({
           padding: '10px 24px',
         },
         containedPrimary: {
-          background: 'linear-gradient(135deg, #E040FB 0%, #FF6D00 100%)',
+          backgroundColor: '#E040FB',
           '&:hover': {
-            background: 'linear-gradient(135deg, #FF79FF 0%, #FF9E40 100%)',
+            backgroundColor: '#FF79FF',
           },
         },
       },

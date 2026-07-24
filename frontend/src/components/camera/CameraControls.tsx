@@ -77,14 +77,14 @@ const controlsContainerStyle = {
   gap: 4,
   py: 4,
   pb: 'calc(16px + env(safe-area-inset-bottom, 0px))',
-  background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
+  backgroundColor: 'rgba(0,0,0,0.6)',
 } as const;
 
 const shutterButtonStyle = {
   width: 72,
   height: 72,
   border: '3px solid rgba(255,255,255,0.9)',
-  background: 'linear-gradient(135deg, #E040FB 0%, #FF6D00 100%)',
+  backgroundColor: '#E040FB',
   color: '#fff',
   transition: 'all 0.2s ease',
   '&:hover': {

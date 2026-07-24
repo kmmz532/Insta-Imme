@@ -37,17 +37,14 @@ body {
   border-radius: 4px;
 }
 
-/* グラデーション背景 */
+/* 背景 (単色) */
 .gradient-bg {
-  background: linear-gradient(135deg, #0A0A0F 0%, #1A0A2E 50%, #0A0A0F 100%);
+  background: #0A0A0F;
 }
 
-/* グラデーションテキスト */
+/* タイトルテキスト (単色アクセント) */
 .gradient-text {
-  background: linear-gradient(135deg, #E040FB, #FF6D00);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #E040FB;
 }
 
 /* パルスアニメーション（撮影ボタン用） */

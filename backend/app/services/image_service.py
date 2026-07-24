@@ -11,7 +11,7 @@ class ImageService:
 
     def save_image(self, file: UploadFile, user_id: str) -> str:
         """アップロードされた画像を一時保存する"""
-        if not file.content_type.startswith("image/"):
+        if not file.content_type or not file.content_type.startswith("image/"):
             raise ValidationError("画像ファイルのみアップロード可能です")
 
         # ユニークなファイル名を生成
@@ -41,9 +41,11 @@ class ImageService:
         """画像に透かし文字を焼き込む (Pillow使用)"""
         try:
             img = Image.open(image_path)
+            # rotate(expand=True) はformat属性を失った画像を返すため、保存時に元フォーマットを再利用できるよう先に退避する
+            original_format = img.format
             # EXIFの向き情報に基づいて画像を回転させておく (Pillow標準の orientation 処理)
             img = self._rotate_by_exif(img)
-            
+
             draw = ImageDraw.Draw(img)
             
             # フォントのロード試行
@@ -97,7 +99,7 @@ class ImageService:
             draw.text((x, y), text, font=font, fill=(255, 255, 255, 240))
             
             # 保存 (元のフォーマットを維持)
-            img.save(image_path, format=img.format)
+            img.save(image_path, format=original_format)
         except Exception as e:
             raise ValidationError(f"透かしの適用に失敗しました: {str(e)}")
 

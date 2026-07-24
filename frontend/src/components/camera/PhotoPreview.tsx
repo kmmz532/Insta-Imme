@@ -70,7 +70,7 @@ const overlayStyle = {
   alignItems: 'center',
   py: 4,
   pb: 'calc(16px + env(safe-area-inset-bottom, 0px))',
-  background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
+  backgroundColor: 'rgba(0,0,0,0.7)',
 } as const;
 
 const retakeButtonStyle = {
