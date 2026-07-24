@@ -1,10 +1,22 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Button, Divider, FormControlLabel, Switch } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Button,
+  Divider,
+  FormControlLabel,
+  Switch,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faInstagram } from '@fortawesome/free-brands-svg-icons';
 import { faRightFromBracket, faSliders } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../../hooks/useAuth';
+import { CAMERA_DEVICE_KEY } from '../../hooks/useCamera';
 
 /** 設定ページ - GPS設定トグル、プリセット、連携管理 */
 export function SettingsPage() {

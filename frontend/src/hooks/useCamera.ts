@@ -13,6 +13,9 @@ interface UseCameraReturn {
   takePhoto: () => Promise<Blob | null>;
 }
 
+/** 設定で選択された優先カメラのdeviceIdを保存するlocalStorageキー */
+export const CAMERA_DEVICE_KEY = 'camera_device_id';
+
 /** カメラ制御フック */
 export function useCamera(): UseCameraReturn {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -20,6 +23,10 @@ export function useCamera(): UseCameraReturn {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [facingMode, setFacingMode] = useState<FacingMode>('environment');
+  // 設定で特定カメラが選ばれていればそのdeviceIdを優先する(前面/背面トグルより優先)
+  const [deviceId, setDeviceId] = useState<string | null>(
+    () => localStorage.getItem(CAMERA_DEVICE_KEY) || null
+  );
   const [error, setError] = useState<string | null>(null);
 
   const stopCamera = useCallback(() => {
@@ -33,14 +40,16 @@ export function useCamera(): UseCameraReturn {
     stopCamera();
 
     try {
+      // 設定で特定カメラが選ばれていればdeviceIdを優先、無ければ前面/背面(facingMode)
+      const videoConstraints: MediaTrackConstraints = deviceId
+        ? { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+        : { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } };
+
       let stream: MediaStream;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
-          audio: false,
-        });
+        stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
       } catch (constraintErr) {
-        // 指定した前面/背面カメラが無い端末(PC等)では制約を外して再試行する
+        // 指定カメラ/前面背面が無い端末(PC等)では制約を外して再試行する
         if (constraintErr instanceof DOMException && constraintErr.name === 'NotAllowedError') {
           throw constraintErr;
         }
@@ -60,19 +69,21 @@ export function useCamera(): UseCameraReturn {
           : 'カメラの起動に失敗しました';
       setError(message);
     }
-  }, [facingMode, stopCamera]);
+  }, [facingMode, deviceId, stopCamera]);
 
   const switchCamera = useCallback(async () => {
+    // トグルは前面/背面を切り替える。特定カメラ選択より優先させるためdeviceId指定を解除する
+    setDeviceId(null);
     const next: FacingMode = facingMode === 'user' ? 'environment' : 'user';
     setFacingMode(next);
   }, [facingMode]);
 
-  /** facingMode変更時にカメラを再起動 */
+  /** facingMode/deviceId変更時にカメラを再起動 */
   useEffect(() => {
     if (streamRef.current) {
       startCamera();
     }
-  }, [facingMode]);
+  }, [facingMode, deviceId]);
 
   const takePhoto = useCallback(async (): Promise<Blob | null> => {
     const video = videoRef.current;
