@@ -84,6 +84,31 @@ export function SettingsPage() {
         </Typography>
       </Box>
 
+      {/* 使用カメラの選択 (物理・仮想カメラ含む) */}
+      <Box sx={sectionStyle}>
+        <FormControl fullWidth size="small">
+          <InputLabel id="camera-select-label">使用するカメラ</InputLabel>
+          <Select
+            id="settings-camera-select"
+            labelId="camera-select-label"
+            label="使用するカメラ"
+            value={selectedCamera}
+            onChange={(e) => handleCameraChange(e.target.value)}
+          >
+            <MenuItem value="">自動（前面/背面トグル）</MenuItem>
+            {cameras.map((c, i) => (
+              <MenuItem key={c.deviceId || i} value={c.deviceId}>
+                {c.label || `カメラ ${i + 1}`}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+          特定のカメラ（広角・望遠・仮想カメラ等）を固定できます。「自動」ならカメラ画面のトグルで前面/背面を切り替えます。
+          {cameras.some((c) => !c.label) && ' カメラ名が空の場合、一度カメラを起動すると名称が表示されます。'}
+        </Typography>
+      </Box>
+
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)' }} />
 
       <Button
