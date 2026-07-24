@@ -1,6 +1,10 @@
 import uuid
 import json
+import io
+import zipfile
+import requests
 from fastapi import APIRouter, Depends, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -16,7 +20,7 @@ from app.schemas.instagram import (
 )
 from app.services.instagram_service import instagram_service
 from app.routes.deps import get_current_user
-from app.lib.errors import ValidationError, NotFoundError, ForbiddenError
+from app.lib.errors import ValidationError, NotFoundError, ForbiddenError, InstagramError
 
 router = APIRouter(prefix="/instagram", tags=["instagram"])
 
@@ -166,3 +170,67 @@ def update_auto_rules(
     db.refresh(account)
     
     return ApiResponse(data=db_to_account_response(account))
+
+@router.get("/accounts/{account_id}/download-all")
+def download_all_photos(
+    account_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """指定されたアカウントの全投稿画像を一括ダウンロードする (ZIP形式)"""
+    account = db.query(InstagramAccount).filter(InstagramAccount.id == account_id).first()
+    if not account:
+        raise NotFoundError("Instagramアカウントが見つかりません")
+        
+    if account.user_id != current_user.id:
+        raise ForbiddenError("このInstagramアカウントの画像を取得する権限がありません")
+
+    try:
+        cl = instagram_service.get_client(account.session_data)
+        cl.get_timeline_feed()
+    except Exception:
+        raise ValidationError("Instagramのセッション期限が切れています。再連携してください。")
+
+    try:
+        # メディアを最大50件取得
+        medias = cl.user_medias(cl.user_id, amount=50)
+        
+        # インメモリでZIP作成
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+            for media in medias:
+                urls = []
+                # media_type (1: Image, 8: Album)
+                if media.media_type == 1:
+                    if media.thumbnail_url:
+                        urls.append(media.thumbnail_url)
+                elif media.media_type == 8:
+                    for res in media.resources:
+                        if res.media_type == 1 and res.thumbnail_url:
+                            urls.append(res.thumbnail_url)
+                
+                # 各画像をダウンロードしてZIPに追加
+                for u_idx, url in enumerate(urls):
+                    try:
+                        # Nominatim同様に適切なUAを指定
+                        resp = requests.get(url, headers={"User-Agent": "Insta-Imme/1.0.0"}, timeout=15)
+                        if resp.status_code == 200:
+                            file_name = f"{media.pk}_{u_idx + 1}.jpg"
+                            zip_file.writestr(file_name, resp.content)
+                    except Exception:
+                        pass # 1件の失敗で全体を止めない
+
+        zip_buffer.seek(0)
+        
+        # ファイル名を指定してストリーム返却
+        filename = f"instagram_photos_{account.username}.zip"
+        headers = {
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
+        return StreamingResponse(
+            zip_buffer,
+            media_type="application/zip",
+            headers=headers
+        )
+    except Exception as e:
+        raise InstagramError(f"画像一括ダウンロード処理に失敗しました: {str(e)}")

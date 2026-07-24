@@ -50,3 +50,31 @@ export async function updateAutoRules(
     body: JSON.stringify(autoRules),
   });
 }
+
+/** アカウントの過去画像をZIPで一括ダウンロード */
+export async function downloadAllPhotos(accountId: string, username: string): Promise<void> {
+  const token = localStorage.getItem('auth_token');
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`/api/instagram/accounts/${accountId}/download-all`, {
+    headers,
+  });
+
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson.error?.message || 'ダウンロードに失敗しました');
+  }
+
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `instagram_photos_${username}.zip`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}

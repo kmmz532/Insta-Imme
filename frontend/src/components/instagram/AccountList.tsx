@@ -19,7 +19,7 @@ import {
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faInstagram } from '@fortawesome/free-brands-svg-icons';
-import { faTrash, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { faTrash, faPlus, faDownload, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import * as instagramService from '../../services/instagramService';
 import type { InstagramAccount } from '../../types/instagram';
 
@@ -28,6 +28,7 @@ export function AccountList() {
   const [accounts, setAccounts] = useState<InstagramAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   // ログインダイアログ用のステート
   const [openDialog, setOpenDialog] = useState(false);
@@ -47,6 +48,18 @@ export function AccountList() {
       setError(err instanceof Error ? err.message : '読み込みに失敗しました');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDownloadAll = async (accountId: string, username: string) => {
+    setDownloadingId(accountId);
+    setError(null);
+    try {
+      await instagramService.downloadAllPhotos(accountId, username);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ダウンロードに失敗しました');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -126,10 +139,25 @@ export function AccountList() {
               />
               <ListItemSecondaryAction>
                 <IconButton
+                  onClick={() => handleDownloadAll(account.id, account.account_name)}
+                  disabled={downloadingId !== null}
+                  size="small"
+                  sx={{ color: 'primary.main', mr: 1 }}
+                  title="画像をすべてダウンロード"
+                >
+                  {downloadingId === account.id ? (
+                    <FontAwesomeIcon icon={faSpinner} spin />
+                  ) : (
+                    <FontAwesomeIcon icon={faDownload} />
+                  )}
+                </IconButton>
+                <IconButton
                   edge="end"
                   onClick={() => handleRemove(account.id)}
                   size="small"
                   sx={{ color: 'error.main' }}
+                  disabled={downloadingId !== null}
+                  title="連携解除"
                 >
                   <FontAwesomeIcon icon={faTrash} />
                 </IconButton>
