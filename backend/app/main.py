@@ -1,4 +1,5 @@
 import os
+import logging
 import threading
 from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.responses import JSONResponse
@@ -12,6 +13,9 @@ from app.database import engine, Base
 import app.models # noqa: F401
 from app.routes import auth, instagram, post, preset
 from app.services.r2_sync_service import download_db, upload_db
+
+# アプリlog(instagram等のwarning/info)をRenderのログに確実に出力する
+logging.basicConfig(level=logging.INFO)
 
 # 起動前にR2から最新のデータベースファイルをダウンロード
 download_db()

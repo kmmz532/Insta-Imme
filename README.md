@@ -126,6 +126,7 @@ Render.com上に **Web Service** としてPython/FastAPIバックエンドをデ
    - `R2_ACCESS_KEY_ID`: R2 の API アクセスキー ID
    - `R2_SECRET_ACCESS_KEY`: R2 の API シークレットアクセスキー
    - `R2_BUCKET_NAME`: データベースファイルを保管する R2 バケット名 (例: `insta-imme-db`)
+   - `INSTAGRAM_PROXY` (任意): Instagram が Render のデータセンター IP を制限して `BadPassword` 等を返す場合に使用するプロキシ URL (例: `http://user:pass@host:port`)。未設定なら直接接続します。
 
 ### フロントエンド: Cloudflare Pages (React)
 フロントエンドを **Cloudflare Pages** にデプロイします。
