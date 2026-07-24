@@ -38,8 +38,10 @@ class InstagramService:
     def get_client(self, session_data_encrypted: str = None) -> Client:
         """instagrapiクライアントを取得する。セッションデータがあれば読み込む。"""
         cl = Client()
-        # API制限の回避等のため、操作ごとの待機時間を設定
-        cl.delay_range = [2, 5]
+        # API制限回避のための操作ごとの待機時間。ログイン/投稿の体感速度優先で短めに設定
+        cl.delay_range = [1, 2]
+        # プロキシ経由で応答が遅い場合に備え、リクエストタイムアウトを延長
+        cl.request_timeout = 30
 
         # データセンターIP(Render等)がブロックされる場合に備えたプロキシ設定
         if settings.instagram_proxy:
@@ -92,6 +94,9 @@ class InstagramService:
                     cl.set_uuids(uuids)
             except Exception as e:
                 logger.warning("端末UUIDの引き継ぎに失敗しました: %s", e)
+
+        # 2FAコードは短時間(約30秒)で失効するため、ログイン/2FA処理中は操作遅延を最小化して素早く通す
+        cl.delay_range = [0, 0] if verification_code else [0, 1]
 
         try:
             if verification_code:
