@@ -116,13 +116,16 @@ Render.com上に **Web Service** としてPython/FastAPIバックエンドをデ
    - **Runtime**: `Python`
    - **Build Command**: `pip install -r requirements.txt`
    - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-2. **ディスク永続化 (Persistent Disk)**:
-   - SQLiteデータベースを永続化するため、コンテナにディスクをマウントします。
-   - **Mount Path**: `/data`
-   - **Name**: `sqlite-db` (サイズは 1GB 等で十分)
+2. **データベースの永続化 (Cloudflare R2 同期)**:
+   - Cloudflare R2 と SQLite の自動同期ロジックが組み込まれています。
+   - アプリ起動時に R2 から `insta_imme.db` が自動ダウンロードされ、データの書き込みが発生するAPI完了時にバックグラウンドで R2 へアップロード（上書き）されます。
 3. **環境変数 (Environment Variables)**:
-   - `DATABASE_URL`: `sqlite:////data/insta_imme.db` (マウントしたディスク上を指定)
-   - `JWT_SECRET`: `任意の強力なランダム文字列`
+   - `DATABASE_URL`: `sqlite:///./insta_imme.db`
+   - `JWT_SECRET`: `任意の強力なランダム文字列` (JWT生成およびセッションデータ暗号化キー)
+   - `R2_ENDPOINT_URL`: Cloudflare R2 の S3 互換 API エンドポイント URL (例: `https://<account_id>.r2.cloudflarestorage.com`)
+   - `R2_ACCESS_KEY_ID`: R2 の API アクセスキー ID
+   - `R2_SECRET_ACCESS_KEY`: R2 の API シークレットアクセスキー
+   - `R2_BUCKET_NAME`: データベースファイルを保管する R2 バケット名 (例: `insta-imme-db`)
 
 ### フロントエンド: Cloudflare Pages (React)
 フロントエンドを **Cloudflare Pages** にデプロイします。

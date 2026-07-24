@@ -1,5 +1,6 @@
 import os
-from fastapi import FastAPI, Request, status
+import threading
+from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -10,6 +11,10 @@ from app.database import engine, Base
 # 全てのモデルをロードしてテーブル作成を行う
 import app.models # noqa: F401
 from app.routes import auth, instagram, post, preset
+from app.services.r2_sync_service import download_db, upload_db
+
+# 起動前にR2から最新のデータベースファイルをダウンロード
+download_db()
 
 # テーブルの作成 (簡易的なマイグレーション)
 Base.metadata.create_all(bind=engine)
@@ -36,6 +41,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# データベース更新時のR2バックアップミドルウェア
+@app.middleware("http")
+async def db_sync_middleware(request: Request, call_next):
+    response = await call_next(request)
+    
+    # 成功した書き込みリクエスト(POST, PUT, DELETE)の場合、バックグラウンドスレッドでR2へDBをアップロード
+    if request.method in ["POST", "PUT", "DELETE"] and 200 <= response.status_code < 300:
+        threading.Thread(target=upload_db, daemon=True).start()
+        
+    return response
+
 # ルーターの登録
 app.include_router(auth.router, prefix="/api")
 app.include_router(instagram.router, prefix="/api")
@@ -57,7 +73,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         }
     )
 
-from fastapi import HTTPException
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     # カスタムHTTPExceptionの処理
