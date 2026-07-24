@@ -39,3 +39,14 @@ export async function associatePreset(
     body: JSON.stringify({ presetId }),
   });
 }
+
+/** アカウントの自動プリセット適用ルールを更新 */
+export async function updateAutoRules(
+  accountId: string,
+  autoRules: InstagramAccount['auto_rules']
+): Promise<InstagramAccount> {
+  return apiClient<InstagramAccount>(`/api/instagram/accounts/${accountId}/auto-rules`, {
+    method: 'PUT',
+    body: JSON.stringify(autoRules),
+  });
+}

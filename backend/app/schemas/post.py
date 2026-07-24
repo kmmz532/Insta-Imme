@@ -6,6 +6,9 @@ class PostPublish(BaseModel):
     imageId: str
     instagramAccountId: str
     caption: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    locationName: Optional[str] = None
 
 class PostResponse(BaseModel):
     id: str

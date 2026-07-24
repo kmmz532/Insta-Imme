@@ -1,4 +1,5 @@
 import uuid
+import json
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from typing import List
@@ -7,12 +8,35 @@ from app.database import get_db
 from app.models.user import User
 from app.models.instagram_account import InstagramAccount
 from app.schemas.api import ApiResponse
-from app.schemas.instagram import InstagramLogin, InstagramAccountResponse, InstagramAssociatePreset
+from app.schemas.instagram import (
+    InstagramLogin,
+    InstagramAccountResponse,
+    InstagramAssociatePreset,
+    AutoPresetSettings
+)
 from app.services.instagram_service import instagram_service
 from app.routes.deps import get_current_user
 from app.lib.errors import ValidationError, NotFoundError, ForbiddenError
 
 router = APIRouter(prefix="/instagram", tags=["instagram"])
+
+def db_to_account_response(db_account: InstagramAccount) -> InstagramAccountResponse:
+    """DBモデルをPydanticレスポンスモデルに変換する (auto_preset_rulesのJSONパース含む)"""
+    auto_rules = None
+    if db_account.auto_preset_rules:
+        try:
+            auto_rules_dict = json.loads(db_account.auto_preset_rules)
+            auto_rules = AutoPresetSettings(**auto_rules_dict)
+        except Exception:
+            pass
+
+    return InstagramAccountResponse(
+        id=db_account.id,
+        username=db_account.username,
+        preset_id=db_account.preset_id,
+        auto_rules=auto_rules,
+        created_at=db_account.created_at
+    )
 
 @router.post("/login", response_model=ApiResponse[InstagramAccountResponse], status_code=201)
 def instagram_login(
@@ -21,7 +45,6 @@ def instagram_login(
     db: Session = Depends(get_db)
 ):
     """Instagramにログインし、アカウントを連携・更新する"""
-    # 既存の同一ユーザーの同一アカウントがあるか確認
     existing_account = db.query(InstagramAccount).filter(
         InstagramAccount.user_id == current_user.id,
         InstagramAccount.username == data.username
@@ -37,17 +60,14 @@ def instagram_login(
         session_data_encrypted=existing_session
     )
 
-    # 新しいセッションデータを暗号化
     encrypted_session = instagram_service.encrypt_session(new_session)
 
     if existing_account:
-        # 既存アカウントのセッションを更新
         existing_account.session_data = encrypted_session
         db.commit()
         db.refresh(existing_account)
-        return ApiResponse(data=InstagramAccountResponse.model_validate(existing_account))
+        return ApiResponse(data=db_to_account_response(existing_account))
     else:
-        # 新規アカウント連携
         account_id = str(uuid.uuid4())
         db_account = InstagramAccount(
             id=account_id,
@@ -58,7 +78,7 @@ def instagram_login(
         db.add(db_account)
         db.commit()
         db.refresh(db_account)
-        return ApiResponse(data=InstagramAccountResponse.model_validate(db_account))
+        return ApiResponse(data=db_to_account_response(db_account))
 
 @router.get("/accounts", response_model=ApiResponse[List[InstagramAccountResponse]])
 def get_accounts(
@@ -67,7 +87,7 @@ def get_accounts(
 ):
     """連携されているInstagramアカウント一覧を取得"""
     accounts = db.query(InstagramAccount).filter(InstagramAccount.user_id == current_user.id).all()
-    return ApiResponse(data=[InstagramAccountResponse.model_validate(a) for a in accounts])
+    return ApiResponse(data=[db_to_account_response(a) for a in accounts])
 
 @router.delete("/accounts/{account_id}", response_model=ApiResponse[None], status_code=status.HTTP_200_OK)
 def delete_account(
@@ -102,7 +122,6 @@ def associate_preset(
     if account.user_id != current_user.id:
         raise ForbiddenError("このアカウントの設定を変更する権限がありません")
 
-    # プリセットIDの検証 (nullでなければ存在確認)
     if data.presetId:
         from app.models.preset import Preset
         preset = db.query(Preset).filter(Preset.id == data.presetId).first()
@@ -115,4 +134,35 @@ def associate_preset(
     db.commit()
     db.refresh(account)
     
-    return ApiResponse(data=InstagramAccountResponse.model_validate(account))
+    return ApiResponse(data=db_to_account_response(account))
+
+@router.put("/accounts/{account_id}/auto-rules", response_model=ApiResponse[InstagramAccountResponse])
+def update_auto_rules(
+    account_id: str,
+    data: AutoPresetSettings,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Instagramアカウントの自動プリセット切替ルールを更新する"""
+    account = db.query(InstagramAccount).filter(InstagramAccount.id == account_id).first()
+    if not account:
+        raise NotFoundError("Instagramアカウントが見つかりません")
+        
+    if account.user_id != current_user.id:
+        raise ForbiddenError("このアカウントの設定を変更する権限がありません")
+
+    # プリセットIDの存在確認
+    from app.models.preset import Preset
+    for rule in data.rules:
+        preset = db.query(Preset).filter(Preset.id == rule.presetId).first()
+        if not preset:
+            raise NotFoundError(f"ルールで指定されたプリセットが見つかりません: {rule.presetId}")
+        if preset.user_id != current_user.id:
+            raise ForbiddenError("他人のプリセットをルールに指定することはできません")
+
+    # ルールをJSON文字列として保存
+    account.auto_preset_rules = json.dumps(data.model_dump())
+    db.commit()
+    db.refresh(account)
+    
+    return ApiResponse(data=db_to_account_response(account))

@@ -7,13 +7,16 @@ import * as postService from '../../services/postService';
 import * as instagramService from '../../services/instagramService';
 import type { InstagramAccount } from '../../types/instagram';
 
+import type { LocationData } from '../../app/pages/CameraPage';
+
 interface PostEditorProps {
   photoBlob: Blob;
+  locationData: LocationData | null;
   onBack: () => void;
 }
 
 /** 投稿編集画面 - 写真プレビュー + キャプション編集 + 投稿実行 */
-export function PostEditor({ photoBlob, onBack }: PostEditorProps) {
+export function PostEditor({ photoBlob, locationData, onBack }: PostEditorProps) {
   const navigate = useNavigate();
   const [caption, setCaption] = useState('');
   const [accounts, setAccounts] = useState<InstagramAccount[]>([]);
@@ -43,7 +46,14 @@ export function PostEditor({ photoBlob, onBack }: PostEditorProps) {
 
     try {
       const { imageId } = await postService.uploadImage(photoBlob);
-      await postService.publishPost(imageId, selectedAccountId, caption);
+      await postService.publishPost(
+        imageId,
+        selectedAccountId,
+        caption,
+        locationData?.latitude,
+        locationData?.longitude,
+        locationData?.locationName
+      );
       setSuccess(true);
       setShowConfirm(false);
     } catch (err) {

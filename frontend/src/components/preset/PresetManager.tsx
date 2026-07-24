@@ -23,7 +23,8 @@ import {
   Divider,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faTrash, faPen, faSliders } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faTrash, faPen, faSliders, faCalendarDays } from '@fortawesome/free-solid-svg-icons';
+import { AutoRuleSelector } from '../instagram/AutoRuleSelector';
 import * as presetService from '../../services/presetService';
 import * as instagramService from '../../services/instagramService';
 import type { Preset, WatermarkSettings } from '../../types/preset';
@@ -38,6 +39,15 @@ export function PresetManager() {
   // ダイアログ用のステート
   const [openDialog, setOpenDialog] = useState(false);
   const [editingPreset, setEditingPreset] = useState<Preset | null>(null);
+
+  // 自動ルールダイアログ用ステート
+  const [openAutoDialog, setOpenAutoDialog] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<InstagramAccount | null>(null);
+
+  const handleOpenAutoRules = (account: InstagramAccount) => {
+    setSelectedAccount(account);
+    setOpenAutoDialog(true);
+  };
   
   // フォームステート
   const [name, setName] = useState('');
@@ -165,17 +175,27 @@ export function PresetManager() {
             {accounts.map((account) => (
               <Grid item xs={12} sm={6} key={account.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
                 <Typography variant="body2">@{account.account_name}</Typography>
-                <FormControl size="small" sx={{ minWidth: 150 }}>
-                  <Select
-                    value={account.preset_id || 'none'}
-                    onChange={(e) => handleAccountPresetChange(account.id, e.target.value)}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleOpenAutoRules(account)}
+                    title="曜日・時間帯自動切替ルール"
+                    sx={{ color: account.auto_rules?.enabled ? 'primary.main' : 'text.secondary' }}
                   >
-                    <MenuItem value="none">割り当てなし</MenuItem>
-                    {presets.map((p) => (
-                      <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                    <FontAwesomeIcon icon={faCalendarDays} />
+                  </IconButton>
+                  <FormControl size="small" sx={{ minWidth: 150 }}>
+                    <Select
+                      value={account.preset_id || 'none'}
+                      onChange={(e) => handleAccountPresetChange(account.id, e.target.value)}
+                    >
+                      <MenuItem value="none">割り当てなし</MenuItem>
+                      {presets.map((p) => (
+                        <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
               </Grid>
             ))}
           </Grid>
@@ -332,6 +352,17 @@ export function PresetManager() {
           </DialogActions>
         </Box>
       </Dialog>
+
+      {/* 自動ルールダイアログ */}
+      {selectedAccount && (
+        <AutoRuleSelector
+          open={openAutoDialog}
+          onClose={() => setOpenAutoDialog(false)}
+          account={selectedAccount}
+          presets={presets}
+          onSaveSuccess={loadData}
+        />
+      )}
     </Box>
   );
 }

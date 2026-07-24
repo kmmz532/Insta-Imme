@@ -16,11 +16,21 @@ export async function uploadImage(imageBlob: Blob): Promise<{ imageId: string }>
 export async function publishPost(
   imageId: string,
   instagramAccountId: string,
-  caption: string
+  caption: string,
+  latitude?: number,
+  longitude?: number,
+  locationName?: string
 ): Promise<PostResult> {
   return apiClient<PostResult>('/api/posts/publish', {
     method: 'POST',
-    body: JSON.stringify({ imageId, instagramAccountId, caption }),
+    body: JSON.stringify({
+      imageId,
+      instagramAccountId,
+      caption,
+      latitude,
+      longitude,
+      locationName,
+    }),
   });
 }
 

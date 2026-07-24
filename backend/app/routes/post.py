@@ -4,7 +4,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, UploadFile, File, Form, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from app.database import get_db
 from app.models.user import User
@@ -23,8 +23,14 @@ router = APIRouter(prefix="/posts", tags=["posts"])
 class ImageUploadResponse(BaseModel):
     imageId: str
 
-def expand_template(template: str, account_name: str) -> str:
-    """テンプレート変数を置換する"""
+def expand_template(
+    template: str,
+    account_name: str,
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
+    loc: Optional[str] = None
+) -> str:
+    """テンプレート変数を置換する (GPS位置情報対応)"""
     now = datetime.now()
     date_str = now.strftime("%Y/%m/%d")
     time_str = now.strftime("%H:%M")
@@ -35,15 +41,50 @@ def expand_template(template: str, account_name: str) -> str:
         "${datetime}": f"{date_str} {time_str}",
         "${app}": "Insta-Imme",
         "${account}": account_name,
-        "${loc}": "",
-        "${lat}": "",
-        "${lng}": ""
+        "${lat}": f"{lat:.6f}" if lat is not None else "",
+        "${lng}": f"{lng:.6f}" if lng is not None else "",
+        "${loc}": loc if loc else ""
     }
     
     result = template
     for key, val in replacements.items():
         result = result.replace(key, val)
     return result
+
+def determine_preset_by_rules(auto_rules_json: str) -> Optional[str]:
+    """自動ルール設定と現在時刻から適用するプリセットIDを判定する"""
+    try:
+        data = json.loads(auto_rules_json)
+        if not data.get("enabled"):
+            return None
+        
+        rules = data.get("rules", [])
+        if not rules:
+            return None
+            
+        now = datetime.now()
+        # 曜日判定 (weekday: 0-4, weekend: 5-6)
+        day_type = "weekend" if now.weekday() >= 5 else "weekday"
+        
+        # 時間区分判定
+        hour = now.hour
+        if 5 <= hour < 11:
+            time_range = "morning"
+        elif 11 <= hour < 18:
+            time_range = "day"
+        elif 18 <= hour < 24:
+            time_range = "night"
+        else:
+            time_range = "late_night"
+
+        # 曜日と時間帯が合致するルールを探す
+        for r in rules:
+            if (r.get("dayOfWeek") == day_type or r.get("dayOfWeek") == "all") and r.get("timeRange") == time_range:
+                return r.get("presetId")
+
+        return None
+    except Exception:
+        return None
 
 @router.post("/upload", response_model=ApiResponse[ImageUploadResponse], status_code=201)
 async def upload_post_image(
@@ -60,7 +101,7 @@ def publish_post(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Instagramに写真を投稿する"""
+    """Instagramに写真を投稿する (自動プリセット選択・GPS変数置換対応)"""
     # アカウントの存在確認と権限チェック
     account = db.query(InstagramAccount).filter(InstagramAccount.id == data.instagramAccountId).first()
     if not account:
@@ -69,21 +110,27 @@ def publish_post(
     if account.user_id != current_user.id:
         raise ForbiddenError("このInstagramアカウントを使用する権限がありません")
 
-    # アカウントに紐付いているプリセットのロード
+    # 適用プリセットIDの決定 (1: 時間帯・曜日自動ルール, 2: デフォルトプリセット)
+    preset_id_applied = None
+    if account.auto_preset_rules:
+        preset_id_applied = determine_preset_by_rules(account.auto_preset_rules)
+    
+    if not preset_id_applied:
+        preset_id_applied = account.preset_id
+
     preset = None
-    if account.preset_id:
-        preset = db.query(Preset).filter(Preset.id == account.preset_id).first()
+    if preset_id_applied:
+        preset = db.query(Preset).filter(Preset.id == preset_id_applied).first()
 
     # キャプションの決定とテンプレート展開
     caption = data.caption
     if caption:
-        caption = expand_template(caption, account.username)
+        caption = expand_template(caption, account.username, data.latitude, data.longitude, data.locationName)
     elif preset:
-        # キャプションが空（即投稿など）の場合、プリセットから生成
         caption_base = preset.caption_template
         if preset.hashtags:
             caption_base += "\n\n" + preset.hashtags
-        caption = expand_template(caption_base, account.username)
+        caption = expand_template(caption_base, account.username, data.latitude, data.longitude, data.locationName)
     else:
         caption = ""
 
@@ -94,7 +141,7 @@ def publish_post(
         user_id=current_user.id,
         instagram_account_id=account.id,
         caption=caption,
-        preset_id=account.preset_id,
+        preset_id=preset_id_applied,
         image_id=data.imageId,
         status="uploading"
     )
@@ -112,7 +159,13 @@ def publish_post(
                 watermark_settings = json.loads(preset.watermark_template)
                 if watermark_settings.get("enabled"):
                     text = watermark_settings.get("text", "")
-                    text_replaced = expand_template(text, account.username)
+                    text_replaced = expand_template(
+                        text,
+                        account.username,
+                        data.latitude,
+                        data.longitude,
+                        data.locationName
+                    )
                     position = watermark_settings.get("position", "bottom_right")
                     font_size = watermark_settings.get("font_size", 36)
                     
