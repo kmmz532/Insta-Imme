@@ -22,7 +22,7 @@ class AutoPresetSettings(BaseModel):
 
 class InstagramAccountResponse(BaseModel):
     id: str
-    username: str
+    account_name: str
     preset_id: Optional[str] = None
     # レポンス時はパース済みのオブジェクトとして返す
     auto_rules: Optional[AutoPresetSettings] = None

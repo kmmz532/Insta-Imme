@@ -40,7 +40,7 @@ def db_to_account_response(db_account: InstagramAccount) -> InstagramAccountResp
 
     return InstagramAccountResponse(
         id=db_account.id,
-        username=db_account.username,
+        account_name=db_account.username,
         preset_id=db_account.preset_id,
         auto_rules=auto_rules,
         created_at=db_account.created_at
@@ -228,10 +228,17 @@ def download_all_photos(
         logger.warning("[IG DL] セッション確認失敗 account=%s: %s", account.username, e, exc_info=True)
         raise ValidationError("Instagramのセッション期限が切れています。再連携してください。")
 
+    # 画像CDNの取得もデータセンターIP制限を避けるため、設定があればプロキシ経由にする
+    from app.config import settings as app_settings
+    dl_proxies = None
+    if app_settings.instagram_proxy:
+        dl_proxies = {"http": app_settings.instagram_proxy, "https": app_settings.instagram_proxy}
+
     try:
         # メディアを最大50件取得
         medias = cl.user_medias(cl.user_id, amount=50)
-        
+        logger.info("[IG DL] 取得メディア数=%d account=%s", len(medias), account.username)
+
         # インメモリでZIP作成
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
@@ -250,7 +257,7 @@ def download_all_photos(
                 for u_idx, url in enumerate(urls):
                     try:
                         # Nominatim同様に適切なUAを指定
-                        resp = requests.get(url, headers={"User-Agent": "Insta-Imme/1.0.0"}, timeout=15)
+                        resp = requests.get(url, headers={"User-Agent": "Insta-Imme/1.0.0"}, timeout=20, proxies=dl_proxies)
                         if resp.status_code == 200:
                             file_name = f"{media.pk}_{u_idx + 1}.jpg"
                             zip_file.writestr(file_name, resp.content)
