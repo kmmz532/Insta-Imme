@@ -10,6 +10,7 @@ from instagrapi.exceptions import (
     UserNotFound,
     ChallengeRequired,
     ClientError,
+    LoginRequired,
 )
 from app.config import settings
 from app.lib.errors import InstagramError, ValidationError
@@ -160,16 +161,20 @@ class InstagramService:
         """写真を投稿し、投稿されたメディアのIDを返す"""
         cl = self.get_client(session_data_encrypted)
 
-        # セッションが有効か確認、無効ならログインエラー
-        if not self._is_session_valid(cl):
-            raise ValidationError("Instagramセッションの有効期限が切れています。再連携してください。")
-
+        # 事前のget_timeline_feedは厳しすぎて誤判定するため、実際にアップロードを試みる。
+        # 認証が必要なエラーの時だけ「セッション切れ(要再連携)」として扱う。
         try:
-            # instagrapiで写真をアップロード (image_path はローカルパス)
             media = cl.photo_upload(path=image_path, caption=caption)
             return media.pk
+        except LoginRequired:
+            raise ValidationError("Instagramセッションの有効期限が切れています。再連携してください。")
         except Exception as e:
-            raise InstagramError(f"写真の投稿に失敗しました: {self._extract_error_detail(e)}")
+            detail = self._extract_error_detail(e)
+            lowered = detail.lower()
+            if "login_required" in lowered or "login required" in lowered or "checkpoint" in lowered:
+                logger.warning("投稿時にセッション失効を検知: %s", detail)
+                raise ValidationError("Instagramセッションの有効期限が切れています。再連携してください。")
+            raise InstagramError(f"写真の投稿に失敗しました: {detail}")
 
 
 instagram_service = InstagramService()
