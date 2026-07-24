@@ -4,16 +4,11 @@ import { AuthPage } from './pages/AuthPage';
 import { CameraPage } from './pages/CameraPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { InstagramPage } from './pages/InstagramPage';
-import { InstagramCallbackPage } from './pages/InstagramCallbackPage';
 
 const router = createBrowserRouter([
   {
     path: '/login',
     element: <AuthPage />,
-  },
-  {
-    path: '/instagram/callback',
-    element: <InstagramCallbackPage />,
   },
   {
     path: '/',

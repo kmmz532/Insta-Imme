@@ -11,6 +11,11 @@ import {
   Alert,
   CircularProgress,
   Card,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faInstagram } from '@fortawesome/free-brands-svg-icons';
@@ -23,6 +28,15 @@ export function AccountList() {
   const [accounts, setAccounts] = useState<InstagramAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // ログインダイアログ用のステート
+  const [openDialog, setOpenDialog] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [show2FA, setShow2FA] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
 
   const loadAccounts = async () => {
     setIsLoading(true);
@@ -38,12 +52,39 @@ export function AccountList() {
 
   useEffect(() => { loadAccounts(); }, []);
 
-  const handleConnect = async () => {
+  const handleOpenDialog = () => {
+    setUsername('');
+    setPassword('');
+    setVerificationCode('');
+    setShow2FA(false);
+    setConnectError(null);
+    setOpenDialog(true);
+  };
+
+  const handleConnect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsConnecting(true);
+    setConnectError(null);
+
     try {
-      const { url } = await instagramService.getAuthUrl();
-      window.location.href = url;
+      const account = await instagramService.loginToInstagram(
+        username,
+        password,
+        show2FA ? verificationCode : undefined
+      );
+      
+      // 成功したら一覧を更新しダイアログを閉じる
+      setOpenDialog(false);
+      loadAccounts();
     } catch (err) {
-      setError(err instanceof Error ? err.message : '連携URLの取得に失敗しました');
+      const message = err instanceof Error ? err.message : '連携に失敗しました';
+      if (message === '2FA') {
+        setShow2FA(true);
+      } else {
+        setConnectError(message);
+      }
+    } finally {
+      setIsConnecting(false);
     }
   };
 
@@ -99,14 +140,67 @@ export function AccountList() {
       )}
 
       <Button
-        id="instagram-connect"
+        id="instagram-connect-btn"
         variant="outlined"
         startIcon={<FontAwesomeIcon icon={faPlus} />}
-        onClick={handleConnect}
+        onClick={handleOpenDialog}
         fullWidth
       >
         Instagramアカウントを追加
       </Button>
+
+      {/* ログインダイアログ */}
+      <Dialog open={openDialog} onClose={() => !isConnecting && setOpenDialog(false)} maxWidth="xs" fullWidth>
+        <Box component="form" onSubmit={handleConnect}>
+          <DialogTitle>Instagramログイン</DialogTitle>
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            {connectError && <Alert severity="error">{connectError}</Alert>}
+            
+            <TextField
+              label="ユーザー名"
+              variant="outlined"
+              fullWidth
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              disabled={isConnecting || show2FA}
+              required
+            />
+            
+            <TextField
+              label="パスワード"
+              type="password"
+              variant="outlined"
+              fullWidth
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isConnecting || show2FA}
+              required
+            />
+
+            {show2FA && (
+              <TextField
+                label="2FA確認コード"
+                variant="outlined"
+                fullWidth
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value)}
+                disabled={isConnecting}
+                required
+                placeholder="6桁のコード"
+                helperText="認証アプリまたはSMSのコードを入力してください"
+              />
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenDialog(false)} disabled={isConnecting}>
+              キャンセル
+            </Button>
+            <Button type="submit" variant="contained" disabled={isConnecting}>
+              {isConnecting ? <CircularProgress size={20} color="inherit" /> : show2FA ? 'コードを送信' : 'ログイン'}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
     </Box>
   );
 }

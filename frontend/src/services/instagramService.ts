@@ -1,18 +1,19 @@
 import { apiClient } from './apiClient';
 import type { InstagramAccount } from '../types/instagram';
 
-/** Instagram OAuth認証URLを取得 */
-export async function getAuthUrl(): Promise<{ url: string }> {
-  return apiClient<{ url: string }>('/api/instagram/auth-url');
-}
-
-/** OAuth コールバック処理 */
-export async function handleCallback(
-  code: string
-): Promise<{ id: string; accountName: string }> {
-  return apiClient<{ id: string; accountName: string }>('/api/instagram/callback', {
+/** Instagramにログインして連携を追加・更新する */
+export async function loginToInstagram(
+  username: string,
+  password: string,
+  verificationCode?: string
+): Promise<InstagramAccount> {
+  return apiClient<InstagramAccount>('/api/instagram/login', {
     method: 'POST',
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({
+      username,
+      password,
+      verification_code: verificationCode || null,
+    }),
   });
 }
 
