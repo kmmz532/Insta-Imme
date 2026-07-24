@@ -37,3 +37,6 @@ coverage/
 **/__pycache__/**
 **/temp-cache/**
 **/node-cache/**
+*.crt
+*.key
+
