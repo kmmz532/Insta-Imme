@@ -161,7 +161,10 @@ def publish_post(
     try:
         # 画像パスの取得
         image_path = image_service.get_image_path(current_user.id, data.imageId)
-        
+
+        # Instagram側の追加クロップで透かしが切れないよう、先に対応比率(4:5〜1.91:1)へ揃える
+        image_service.crop_to_instagram_ratio(image_path)
+
         # プリセットがあり、透かしが有効な場合は透かし加工を施す
         if preset and preset.watermark_template:
             try:

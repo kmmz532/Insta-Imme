@@ -82,14 +82,35 @@ export function useCamera(): UseCameraReturn {
       canvasRef.current = document.createElement('canvas');
     }
 
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    if (!vw || !vh) return null;
+
+    // Instagram向けに 4:5 (幅:高さ) で中央クロップして撮影する
+    const TARGET_RATIO = 4 / 5;
+    const currentRatio = vw / vh;
+    let sx = 0;
+    let sy = 0;
+    let sw = vw;
+    let sh = vh;
+    if (currentRatio > TARGET_RATIO) {
+      // 横に広い → 幅を削る
+      sw = Math.round(vh * TARGET_RATIO);
+      sx = Math.round((vw - sw) / 2);
+    } else if (currentRatio < TARGET_RATIO) {
+      // 縦に長い → 高さを削る
+      sh = Math.round(vw / TARGET_RATIO);
+      sy = Math.round((vh - sh) / 2);
+    }
+
     const canvas = canvasRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = sw;
+    canvas.height = sh;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
-    ctx.drawImage(video, 0, 0);
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
 
     return new Promise<Blob | null>((resolve) => {
       canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.92);

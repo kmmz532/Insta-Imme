@@ -82,12 +82,18 @@ const containerStyle = {
   height: '100%',
   backgroundColor: '#000',
   overflow: 'hidden',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 } as const;
 
+// 撮影と同じ 4:5 枠で表示してWYSIWYGにする
 const videoStyle = {
   width: '100%',
-  height: '100%',
+  aspectRatio: '4 / 5',
+  maxHeight: '100%',
   objectFit: 'cover',
+  display: 'block',
 } as const;
 
 const loadingOverlayStyle = {
