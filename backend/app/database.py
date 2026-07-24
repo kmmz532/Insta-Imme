@@ -1,14 +1,23 @@
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from typing import Generator
 
 from app.config import settings
+from app.services.r2_sync_service import DB_FILE_PATH
+
+# SQLite接続時は、環境変数の記述に関わらず自動的に絶対パスを適用して絶対パス解決の不整合を防ぐ
+db_url = settings.database_url
+if db_url.startswith("sqlite"):
+    # スラッシュ3つ + 絶対パス (Windows環境等のドライブレター等も考慮)
+    # 例: sqlite:///E:\workspace\...\insta_imme.db
+    db_url = f"sqlite:///{DB_FILE_PATH}"
 
 engine = create_engine(
-    settings.database_url,
+    db_url,
     connect_args=(
         {"check_same_thread": False}
-        if settings.database_url.startswith("sqlite")
+        if db_url.startswith("sqlite")
         else {}
     ),
 )

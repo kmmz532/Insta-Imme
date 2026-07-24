@@ -6,7 +6,10 @@ R2_ENDPOINT_URL = os.getenv("R2_ENDPOINT_URL")
 R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID")
 R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY")
 R2_BUCKET_NAME = os.getenv("R2_BUCKET_NAME")
-DB_FILE_PATH = "./insta_imme.db"
+
+# 実行環境のカレントディレクトリに左右されないよう、絶対パスでデータベース位置を固定
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DB_FILE_PATH = os.path.join(BASE_DIR, "insta_imme.db")
 
 def get_r2_client():
     """Cloudflare R2接続用クライアントを取得"""
@@ -26,7 +29,7 @@ def download_db() -> bool:
         print("[R2 Sync] R2環境変数が未設定のため、R2データベース同期は無効です。")
         return False
     try:
-        print("[R2 Sync] R2からデータベースをダウンロード中...")
+        print(f"[R2 Sync] R2からデータベースをダウンロード中... (保存先: {DB_FILE_PATH})")
         client.download_file(R2_BUCKET_NAME, "insta_imme.db", DB_FILE_PATH)
         print("[R2 Sync] データベースのダウンロードに成功しました。")
         return True
@@ -50,7 +53,7 @@ def upload_db() -> bool:
         print(f"[R2 Sync] アップロード対象のデータベースファイルが見つかりません: {DB_FILE_PATH}")
         return False
     try:
-        print("[R2 Sync] R2へデータベースをアップロード中...")
+        print(f"[R2 Sync] R2へデータベースをアップロード中... (送信元: {DB_FILE_PATH})")
         client.upload_file(DB_FILE_PATH, R2_BUCKET_NAME, "insta_imme.db")
         print("[R2 Sync] データベースのアップロードに成功しました。")
         return True
