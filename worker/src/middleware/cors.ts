@@ -1,9 +1,11 @@
-import { Hono } from 'hono';
+import type { Context, Next } from 'hono';
 import type { Env } from '../types/env';
 
-/** CORS設定ミドルウェア */
+type AppContext = Context<{ Bindings: Env }>;
+
+/** CORS設定ミドルウェア（カスタム実装、必要に応じて利用） */
 export function corsMiddleware(allowedOrigins: string[]) {
-  return async (c: ReturnType<typeof createContext>, next: () => Promise<void>) => {
+  return async (c: AppContext, next: Next) => {
     const origin = c.req.header('Origin') ?? '';
     const isAllowed = allowedOrigins.some((o) => origin === o);
 
@@ -44,5 +46,3 @@ function buildCorsHeaders(
 
   return headers;
 }
-
-type createContext = Hono<{ Bindings: Env }>;
