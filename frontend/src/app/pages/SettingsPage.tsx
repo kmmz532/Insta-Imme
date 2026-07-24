@@ -23,15 +23,39 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [gpsEnabled, setGpsEnabled] = useState(false);
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+  const [selectedCamera, setSelectedCamera] = useState('');
 
   useEffect(() => {
     const enabled = localStorage.getItem('gps_enabled') === 'true';
     setGpsEnabled(enabled);
+    setSelectedCamera(localStorage.getItem(CAMERA_DEVICE_KEY) || '');
+    loadCameras();
   }, []);
+
+  // 利用可能なカメラ(物理・仮想含む)を列挙する。ラベルはカメラ許可後に取得できる
+  const loadCameras = async () => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      setCameras(devices.filter((d) => d.kind === 'videoinput'));
+    } catch {
+      // 列挙失敗時は自動(トグル)のみ
+    }
+  };
 
   const handleGpsToggle = (val: boolean) => {
     setGpsEnabled(val);
     localStorage.setItem('gps_enabled', String(val));
+  };
+
+  const handleCameraChange = (deviceId: string) => {
+    setSelectedCamera(deviceId);
+    if (deviceId) {
+      localStorage.setItem(CAMERA_DEVICE_KEY, deviceId);
+    } else {
+      localStorage.removeItem(CAMERA_DEVICE_KEY);
+    }
   };
 
   return (
