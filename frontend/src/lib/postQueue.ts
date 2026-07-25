@@ -72,6 +72,14 @@ async function processQueue(): Promise<void> {
         skipWatermark = true;
       }
 
+      // アップロード時間ではなく /health の疎通でコールドスタートを判定する
+      const awake = await postService.pingServer();
+      if (!awake) {
+        emit(job, 'uploading', `サーバー起動待ち…（最大5分） (@${job.accountName})`);
+        const up = await postService.waitForServer(UPLOAD_TIMEOUT_MS);
+        if (!up) throw new Error('サーバーが起動しませんでした（時間切れ）');
+      }
+
       emit(job, 'uploading', `アップロード中... (@${job.accountName})`);
       const { imageId } = await postService.uploadImage(blob, UPLOAD_TIMEOUT_MS);
 
