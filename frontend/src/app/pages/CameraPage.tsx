@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Snackbar, Alert } from '@mui/material';
 import { CameraView } from '../../components/camera/CameraView';
 import { PhotoPreview } from '../../components/camera/PhotoPreview';
 import { PostEditor } from '../../components/post/PostEditor';
 import { useLocation } from '../../hooks/useLocation';
-import * as postService from '../../services/postService';
 import * as instagramService from '../../services/instagramService';
+import * as presetService from '../../services/presetService';
+import { enqueuePost, subscribePostQueue } from '../../lib/postQueue';
+import type { WatermarkSettings } from '../../types/preset';
 
 type CameraPageState = 'camera' | 'preview' | 'edit';
 
@@ -30,25 +32,36 @@ export function CameraPage() {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'info' | 'error'>('info');
 
+  const notify = (message: string, severity: 'success' | 'info' | 'error') => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  };
+
+  // 投稿キューの進行状況をスナックバーに反映（バックグラウンド投稿の通知）
+  useEffect(() => {
+    return subscribePostQueue((e) => {
+      const severity = e.status === 'success' ? 'success' : e.status === 'error' ? 'error' : 'info';
+      notify(e.message, severity);
+    });
+  }, []);
+
   const handlePhotoTaken = async (blob: Blob) => {
     const isGpsEnabled = localStorage.getItem('gps_enabled') === 'true';
     let loc: LocationData | null = null;
-    
+
     if (isGpsEnabled) {
-      setSnackbarSeverity('info');
-      setSnackbarMessage('位置情報を取得中...');
-      setSnackbarOpen(true);
+      notify('位置情報を取得中...', 'info');
       loc = await fetchLocation();
     }
 
     if (isInstantPost) {
-      // 即投稿モード: プレビュー画面へ遷移せず、裏で投稿処理を実行
-      setSnackbarSeverity('info');
-      setSnackbarMessage('即投稿処理を開始しました...');
-      setSnackbarOpen(true);
-
+      // 即投稿モード: プレビューを挟まずキューに投入（バックグラウンドで投稿）
       try {
-        const accounts = await instagramService.fetchAccounts();
+        const [accounts, presets] = await Promise.all([
+          instagramService.fetchAccounts(),
+          presetService.fetchPresets(),
+        ]);
         if (accounts.length === 0) {
           throw new Error('連携されているInstagramアカウントがありません。設定から連携してください。');
         }
@@ -56,26 +69,23 @@ export function CameraPage() {
         const targetAccount = accounts.find((a) => a.preset_id) || accounts[0];
         if (!targetAccount) return;
 
-        // アップロード実行
-        const { imageId } = await postService.uploadImage(blob);
-        
-        // 投稿実行 (GPS位置情報パラメータを引き渡す)
-        await postService.publishPost(
-          imageId,
-          targetAccount.id,
-          '',
-          loc?.latitude,
-          loc?.longitude,
-          loc?.locationName
-        );
+        const watermark: WatermarkSettings | null = targetAccount.preset_id
+          ? presets.find((p) => p.id === targetAccount.preset_id)?.watermark ?? null
+          : null;
 
-        setSnackbarSeverity('success');
-        setSnackbarMessage(`投稿完了 (@${targetAccount.account_name})`);
-        setSnackbarOpen(true);
+        enqueuePost({
+          id: crypto.randomUUID(),
+          blob,
+          accountId: targetAccount.id,
+          accountName: targetAccount.account_name,
+          caption: '',
+          latitude: loc?.latitude,
+          longitude: loc?.longitude,
+          locationName: loc?.locationName,
+          watermark,
+        });
       } catch (err) {
-        setSnackbarSeverity('error');
-        setSnackbarMessage(err instanceof Error ? err.message : '即投稿に失敗しました');
-        setSnackbarOpen(true);
+        notify(err instanceof Error ? err.message : '即投稿に失敗しました', 'error');
       }
     } else {
       // 通常投稿モード
@@ -125,10 +135,10 @@ export function CameraPage() {
         />
       )}
 
-      {/* スナックバー */}
+      {/* スナックバー（GPS取得・投稿キューの進行通知） */}
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={6000}
+        autoHideDuration={5000}
         onClose={() => setSnackbarOpen(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >

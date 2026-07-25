@@ -1,7 +1,10 @@
 import uuid
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+# テンプレート変数や曜日/時間帯判定はユーザー基準の日本時間(JST)で扱う
+JST = timezone(timedelta(hours=9))
 from fastapi import APIRouter, Depends, UploadFile, File, Form, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -34,7 +37,7 @@ def expand_template(
     loc: Optional[str] = None
 ) -> str:
     """テンプレート変数を置換する (GPS位置情報対応)"""
-    now = datetime.now()
+    now = datetime.now(JST)
     date_str = now.strftime("%Y/%m/%d")
     time_str = now.strftime("%H:%M")
     
@@ -65,7 +68,7 @@ def determine_preset_by_rules(auto_rules_json: str) -> Optional[str]:
         if not rules:
             return None
             
-        now = datetime.now()
+        now = datetime.now(JST)
         # 曜日判定 (weekday: 0-4, weekend: 5-6)
         day_type = "weekend" if now.weekday() >= 5 else "weekday"
         
@@ -166,7 +169,8 @@ def publish_post(
         image_service.crop_to_instagram_ratio(image_path)
 
         # プリセットがあり、透かしが有効な場合は透かし加工を施す
-        if preset and preset.watermark_template:
+        # (クライアント側で焼き込み済みならskipWatermark=Trueでスキップ)
+        if preset and preset.watermark_template and not data.skipWatermark:
             try:
                 watermark_settings = json.loads(preset.watermark_template)
                 if watermark_settings.get("enabled"):

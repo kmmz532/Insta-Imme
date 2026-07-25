@@ -8,7 +8,8 @@ const API_BASE = import.meta.env.VITE_API_URL ?? '';
  */
 export async function apiClient<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  timeoutMs?: number
 ): Promise<T> {
   const token = localStorage.getItem('auth_token');
   const headers = new Headers(options.headers);
@@ -21,7 +22,26 @@ export async function apiClient<T>(
     headers.set('Content-Type', 'application/json');
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  // サーバーのコールドスタート(Render等)に備えて任意のタイムアウトを設定できる
+  const controller = timeoutMs ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+      signal: controller?.signal,
+    });
+  } catch (err) {
+    if (controller?.signal.aborted) {
+      throw new ApiClientError('サーバーの応答がありません（時間切れ）', 'TIMEOUT', 0);
+    }
+    throw err;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+
   const json = (await res.json()) as ApiResponse<T>;
 
   if (!json.success) {

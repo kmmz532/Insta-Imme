@@ -58,7 +58,9 @@ export function PostHistoryList() {
     setError(null);
     
     try {
-      await postService.publishPost(item.image_id, item.instagram_account_id, item.caption);
+      await postService.publishPost(item.image_id, item.instagram_account_id, item.caption, {
+        timeoutMs: 5 * 60 * 1000,
+      });
       // 再読み込み
       const histList = await postService.fetchHistory();
       setHistory(histList);
